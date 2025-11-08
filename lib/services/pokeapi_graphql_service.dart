@@ -3,12 +3,12 @@ import '../models/pokemon.dart';
 import 'pokemon_queries.dart';
 
 class PokeApiGraphQLService {
+  static const String _endpoint = 'https://beta.pokeapi.co/graphql/v1beta2';
+
   late GraphQLClient _client;
 
   PokeApiGraphQLService() {
-    final HttpLink httpLink = HttpLink(
-      'https://beta.pokeapi.co/graphql/v1beta',
-    );
+    final HttpLink httpLink = HttpLink(_endpoint);
 
     _client = GraphQLClient(
       link: httpLink,
@@ -202,7 +202,7 @@ class PokeApiGraphQLService {
       damageRelations: damageRelations,
       shinyAvailable: true,
       officialSources: {
-        'graphql_endpoint': 'https://beta.pokeapi.co/graphql/v1beta'
+        'graphql_endpoint': _endpoint,
       },
     );
   }
