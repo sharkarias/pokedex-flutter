@@ -1,6 +1,7 @@
 /// GraphQL queries for PokeAPI Beta GraphQL API
 class PokemonQueries {
-  /// Query to fetch a list of Pokemon with details
+  /// Lightweight query to fetch Pokemon list with minimal data (for list view)
+  /// Returns only: id, name, types, and sprites
   /// 
   /// Parameters:
   /// - limit: Number of Pokemon to fetch
@@ -8,63 +9,84 @@ class PokemonQueries {
   static String getPokemonList({int limit = 20, int offset = 0}) {
     return '''
       query GetPokemonList {
-        pokemon_v2_pokemon(limit: $limit, offset: $offset, order_by: {id: asc}) {
+        pokemon(limit: $limit, offset: $offset, order_by: {id: asc}) {
+          id
+          name
+          pokemontypes {
+            type {
+              name
+            }
+          }
+        }
+      }
+    ''';
+  }
+
+  /// Detailed query to fetch a single Pokemon with full details
+  /// 
+  /// Parameters:
+  /// - limit: Number of Pokemon to fetch
+  /// - offset: Offset for pagination
+  static String getPokemonDetails({int limit = 20, int offset = 0}) {
+    return '''
+      query GetPokemonDetails {
+        pokemon(limit: $limit, offset: $offset, order_by: {id: asc}) {
           id
           name
           height
           weight
-          pokemon_v2_pokemontypes {
-            pokemon_v2_type {
+          pokemontypes {
+            type {
               name
             }
           }
-          pokemon_v2_pokemonabilities {
+          pokemonabilities {
             is_hidden
-            pokemon_v2_ability {
+            ability {
               name
-              pokemon_v2_abilityeffecttexts(where: {language_id: {_eq: 9}}, limit: 1) {
+              abilityeffecttexts(where: {language_id: {_eq: 9}}, limit: 1) {
                 short_effect
               }
             }
           }
-          pokemon_v2_pokemonstats {
+          pokemonstats {
             base_stat
-            pokemon_v2_stat {
+            stat {
               name
             }
           }
-          pokemon_v2_pokemonspecy {
+          pokemonspecy {
             is_legendary
             is_mythical
             capture_rate
-            pokemon_v2_generation {
+            generation {
               name
             }
-            pokemon_v2_pokemoncolor {
+            pokemoncolor {
               name
             }
-            pokemon_v2_pokemonegggroups {
-              pokemon_v2_egggroup {
+            pokemonegggroups {
+              egggroup {
                 name
               }
             }
-            pokemon_v2_pokemonspeciesflavortexts(
+            pokemonspeciesflavortexts(
               where: {language_id: {_eq: 9}}
               limit: 1
             ) {
               flavor_text
             }
           }
-          pokemon_v2_pokemonmoves(
-            where: {pokemon_v2_movelearnmethod: {name: {_eq: "level-up"}}}
+          pokemonmoves(
+            where: {movelearnmethod: {name: {_eq: "level-up"}}}
             limit: 8
             order_by: {level: asc}
           ) {
             level
-            pokemon_v2_move {
+            move {
               name
             }
-            pokemon_v2_movelearnmethod {
+            movelearnmethod {
               name
             }
           }
@@ -80,11 +102,11 @@ class PokemonQueries {
   static String getTypeDamageRelations(String typeName) {
     return '''
       query GetTypeDamageRelations {
-        pokemon_v2_type(where: {name: {_eq: "$typeName"}}) {
+        type(where: {name: {_eq: "$typeName"}}) {
           name
-          pokemonV2TypeefficaciesByTargetTypeId {
+          typeefficaciesbytargettypeid {
             damage_factor
-            pokemon_v2_type {
+            type {
               name
             }
           }
@@ -100,63 +122,63 @@ class PokemonQueries {
   static String getPokemonById(int id) {
     return '''
       query GetPokemonById {
-        pokemon_v2_pokemon(where: {id: {_eq: $id}}) {
+        pokemon(where: {id: {_eq: $id}}) {
           id
           name
           height
           weight
-          pokemon_v2_pokemontypes {
-            pokemon_v2_type {
+          pokemontypes {
+            type {
               name
             }
           }
-          pokemon_v2_pokemonabilities {
+          pokemonabilities {
             is_hidden
-            pokemon_v2_ability {
+            ability {
               name
-              pokemon_v2_abilityeffecttexts(where: {language_id: {_eq: 9}}, limit: 1) {
+              abilityeffecttexts(where: {language_id: {_eq: 9}}, limit: 1) {
                 short_effect
               }
             }
           }
-          pokemon_v2_pokemonstats {
+          pokemonstats {
             base_stat
-            pokemon_v2_stat {
+            stat {
               name
             }
           }
-          pokemon_v2_pokemonspecy {
+          pokemonspecy {
             is_legendary
             is_mythical
             capture_rate
-            pokemon_v2_generation {
+            generation {
               name
             }
-            pokemon_v2_pokemoncolor {
+            pokemoncolor {
               name
             }
-            pokemon_v2_pokemonegggroups {
-              pokemon_v2_egggroup {
+            pokemonegggroups {
+              egggroup {
                 name
               }
             }
-            pokemon_v2_pokemonspeciesflavortexts(
+            pokemonspeciesflavortexts(
               where: {language_id: {_eq: 9}}
               limit: 1
             ) {
               flavor_text
             }
           }
-          pokemon_v2_pokemonmoves(
-            where: {pokemon_v2_movelearnmethod: {name: {_eq: "level-up"}}}
+          pokemonmoves(
+            where: {movelearnmethod: {name: {_eq: "level-up"}}}
             limit: 8
             order_by: {level: asc}
           ) {
             level
-            pokemon_v2_move {
+            move {
               name
             }
-            pokemon_v2_movelearnmethod {
+            movelearnmethod {
               name
             }
           }
@@ -168,7 +190,7 @@ class PokemonQueries {
   /// Query to get total count of Pokemon for pagination
   static const String getPokemonCount = '''
     query GetPokemonCount {
-      pokemon_v2_pokemon_aggregate {
+      pokemon_aggregate {
         aggregate {
           count
         }
@@ -183,11 +205,11 @@ class PokemonQueries {
   static String searchPokemonByName(String searchTerm) {
     return '''
       query SearchPokemonByName {
-        pokemon_v2_pokemon(where: {name: {_ilike: "%$searchTerm%"}}, limit: 20) {
+        pokemon(where: {name: {_ilike: "%$searchTerm%"}}, limit: 20) {
           id
           name
-          pokemon_v2_pokemontypes {
-            pokemon_v2_type {
+          pokemontypes {
+            type {
               name
             }
           }

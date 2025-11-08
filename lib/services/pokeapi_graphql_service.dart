@@ -3,7 +3,7 @@ import '../models/pokemon.dart';
 import 'pokemon_queries.dart';
 
 class PokeApiGraphQLService {
-  static const String _endpoint = 'https://beta.pokeapi.co/graphql/v1beta2';
+  static const String _endpoint = 'https://graphql.pokeapi.co/v1beta2';
 
   late GraphQLClient _client;
 
@@ -35,13 +35,13 @@ class PokeApiGraphQLService {
       throw Exception('Failed to load Pokemon list: ${result.exception}');
     }
 
-    final List pokemonData = result.data?['pokemon_v2_pokemon'] ?? [];
+    final List pokemonData = result.data?['pokemon'] ?? [];
     
     final List<Pokemon> pokemonList = [];
     
     for (var data in pokemonData) {
       try {
-        final pokemon = await _parsePokemonFromGraphQL(data);
+        final pokemon = _parsePokemonBasicFromGraphQL(data);
         pokemonList.add(pokemon);
       } catch (e) {
         print('Error parsing Pokemon: ${data['name']}, Error: $e');
@@ -54,7 +54,7 @@ class PokeApiGraphQLService {
     );
     
     final countResult = await _client.query(countOptions);
-    final totalCount = countResult.data?['pokemon_v2_pokemon_aggregate']?['aggregate']?['count'] ?? 0;
+    final totalCount = countResult.data?['pokemon_aggregate']?['aggregate']?['count'] ?? 0;
     
     final hasNextPage = offset + pageSize < totalCount;
     final nextCursor = hasNextPage ? 'cursor_${offset + pageSize + 1}' : null;
@@ -67,21 +67,95 @@ class PokeApiGraphQLService {
     );
   }
 
+  /// Fetch detailed information for a single Pokemon by ID
+  Future<Pokemon> fetchPokemonById(int id) async {
+    final QueryOptions options = QueryOptions(
+      document: gql(PokemonQueries.getPokemonById(id)),
+    );
+
+    final QueryResult result = await _client.query(options);
+
+    if (result.hasException) {
+      throw Exception('Failed to load Pokemon details: ${result.exception}');
+    }
+
+    final List pokemonData = result.data?['pokemon'] ?? [];
+    
+    if (pokemonData.isEmpty) {
+      throw Exception('Pokemon with ID $id not found');
+    }
+
+    return await _parsePokemonFromGraphQL(pokemonData[0]);
+  }
+
+  /// Lightweight parser for list view - only parses: id, name, types, and sprite
+  Pokemon _parsePokemonBasicFromGraphQL(Map<String, dynamic> data) {
+    final id = data['id'] as int;
+    final name = _capitalize(data['name'] as String);
+    
+    // Parse types
+    final typesData = data['pokemontypes'] as List;
+    final types = typesData
+        .map((t) => _capitalize(t['type']['name'] as String))
+        .toList();
+
+    // Generate sprite URLs
+    final spriteUrl = 'https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/$id.png';
+    final officialArtworkUrl = 'https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/other/official-artwork/$id.png';
+
+    // Return Pokemon with minimal data (defaults for unused fields)
+    return Pokemon(
+      nationalDex: id,
+      name: name,
+      generation: 1, // Default, not needed for list view
+      types: types,
+      spriteUrl: spriteUrl,
+      officialArtworkUrl: officialArtworkUrl,
+      heightM: null,
+      weightKg: null,
+      baseStats: BaseStats(
+        hp: 0,
+        attack: 0,
+        defense: 0,
+        specialAttack: 0,
+        specialDefense: 0,
+        speed: 0,
+        total: 0,
+      ),
+      abilities: [],
+      eggGroups: [],
+      isLegendary: false,
+      isMythical: false,
+      forms: ['Normal'],
+      evolutionChain: [],
+      movesSample: [],
+      flavorText: null,
+      captureRate: null,
+      color: null,
+      damageRelations: {},
+      shinyAvailable: true,
+      officialSources: {
+        'graphql_endpoint': _endpoint,
+      },
+    );
+  }
+
+  /// Detailed parser for individual Pokemon view - parses all fields
   Future<Pokemon> _parsePokemonFromGraphQL(Map<String, dynamic> data) async {
     final id = data['id'] as int;
     final name = _capitalize(data['name'] as String);
     
     // Parse types
-    final typesData = data['pokemon_v2_pokemontypes'] as List;
+    final typesData = data['pokemontypes'] as List;
     final types = typesData
-        .map((t) => _capitalize(t['pokemon_v2_type']['name'] as String))
+        .map((t) => _capitalize(t['type']['name'] as String))
         .toList();
 
     // Parse stats
-    final statsData = data['pokemon_v2_pokemonstats'] as List;
+    final statsData = data['pokemonstats'] as List;
     final statsMap = <String, int>{};
     for (var stat in statsData) {
-      final statName = stat['pokemon_v2_stat']['name'] as String;
+      final statName = stat['stat']['name'] as String;
       final baseStat = stat['base_stat'] as int;
       statsMap[statName] = baseStat;
     }
@@ -97,14 +171,14 @@ class PokeApiGraphQLService {
     );
 
     // Parse abilities
-    final abilitiesData = data['pokemon_v2_pokemonabilities'] as List;
+    final abilitiesData = data['pokemonabilities'] as List;
     final abilities = abilitiesData.map((abilityData) {
-      final ability = abilityData['pokemon_v2_ability'];
+      final ability = abilityData['ability'];
       final isHidden = abilityData['is_hidden'] as bool;
       final abilityName = _capitalize(ability['name'] as String);
       
       String shortEffect = '';
-      final effectTexts = ability['pokemon_v2_abilityeffecttexts'] as List?;
+      final effectTexts = ability['abilityeffecttexts'] as List?;
       if (effectTexts != null && effectTexts.isNotEmpty) {
         shortEffect = effectTexts[0]['short_effect'] as String? ?? '';
         if (shortEffect.length > 140) {
@@ -120,14 +194,14 @@ class PokeApiGraphQLService {
     }).toList();
 
     // Parse species data
-    final speciesData = data['pokemon_v2_pokemonspecy'];
+    final speciesData = data['pokemonspecy'];
     final isLegendary = speciesData['is_legendary'] as bool? ?? false;
     final isMythical = speciesData['is_mythical'] as bool? ?? false;
     final captureRate = speciesData['capture_rate'] as int?;
 
     // Parse generation
     int generation = 1;
-    final generationData = speciesData['pokemon_v2_generation'];
+    final generationData = speciesData['generation'];
     if (generationData != null) {
       final genName = generationData['name'] as String;
       generation = _parseGeneration(genName.replaceAll('generation-', ''));
@@ -135,20 +209,20 @@ class PokeApiGraphQLService {
 
     // Parse color
     String? color;
-    final colorData = speciesData['pokemon_v2_pokemoncolor'];
+    final colorData = speciesData['pokemoncolor'];
     if (colorData != null) {
       color = _capitalize(colorData['name'] as String);
     }
 
     // Parse egg groups
-    final eggGroupsData = speciesData['pokemon_v2_pokemonegggroups'] as List;
+    final eggGroupsData = speciesData['pokemonegggroups'] as List;
     final eggGroups = eggGroupsData
-        .map((eg) => _capitalize(eg['pokemon_v2_egggroup']['name'] as String))
+        .map((eg) => _capitalize(eg['egggroup']['name'] as String))
         .toList();
 
     // Parse flavor text
     String? flavorText;
-    final flavorTextData = speciesData['pokemon_v2_pokemonspeciesflavortexts'] as List;
+    final flavorTextData = speciesData['pokemonspeciesflavortexts'] as List;
     if (flavorTextData.isNotEmpty) {
       flavorText = (flavorTextData[0]['flavor_text'] as String)
           .replaceAll('\n', ' ')
@@ -159,11 +233,11 @@ class PokeApiGraphQLService {
     }
 
     // Parse moves
-    final movesData = data['pokemon_v2_pokemonmoves'] as List;
+    final movesData = data['pokemonmoves'] as List;
     final movesSample = movesData.map((moveData) {
-      final moveName = _capitalize(moveData['pokemon_v2_move']['name'] as String);
+      final moveName = _capitalize(moveData['move']['name'] as String);
       final level = moveData['level'] as int? ?? 0;
-      final method = moveData['pokemon_v2_movelearnmethod']['name'] as String;
+      final method = moveData['movelearnmethod']['name'] as String;
 
       return PokemonMove(
         name: moveName,
@@ -219,13 +293,13 @@ class PokeApiGraphQLService {
         final QueryResult result = await _client.query(options);
 
         if (!result.hasException && result.data != null) {
-          final typeData = result.data?['pokemon_v2_type'] as List?;
+          final typeData = result.data?['type'] as List?;
           if (typeData != null && typeData.isNotEmpty) {
-            final efficacies = typeData[0]['pokemonV2TypeefficaciesByTargetTypeId'] as List;
+            final efficacies = typeData[0]['typeefficaciesbytargettypeid'] as List;
 
             for (var efficacy in efficacies) {
               final damageFactor = efficacy['damage_factor'] as int;
-              final attackingType = _capitalize(efficacy['pokemon_v2_type']['name'] as String);
+              final attackingType = _capitalize(efficacy['type']['name'] as String);
               
               // damage_factor is in percentage (e.g., 200 = 2x, 50 = 0.5x, 0 = 0x)
               final multiplier = damageFactor / 100.0;
