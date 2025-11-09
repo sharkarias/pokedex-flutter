@@ -19,6 +19,7 @@ class PokeApiGraphQLService {
   Future<PokemonListResponse> fetchPokemonList({
     int pageSize = 20,
     int pageNumber = 1,
+    String orderList = 'asc',
   }) async {
     final offset = (pageNumber - 1) * pageSize;
 
@@ -26,6 +27,7 @@ class PokeApiGraphQLService {
       document: gql(PokemonQueries.getPokemonList(
         limit: pageSize,
         offset: offset,
+        orderList: orderList,
       )),
     );
 
@@ -41,8 +43,12 @@ class PokeApiGraphQLService {
     
     for (var data in pokemonData) {
       try {
-        final pokemon = _parsePokemonBasicFromGraphQL(data);
-        pokemonList.add(pokemon);
+        // Only include default forms (is_default: true)
+        final isDefault = data['is_default'] as bool? ?? true;
+        if (isDefault) {
+          final pokemon = _parsePokemonBasicFromGraphQL(data);
+          pokemonList.add(pokemon);
+        }
       } catch (e) {
         print('Error parsing Pokemon: ${data['name']}, Error: $e');
       }

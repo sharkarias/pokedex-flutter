@@ -6,10 +6,10 @@ class PokemonQueries {
   /// Parameters:
   /// - limit: Number of Pokemon to fetch
   /// - offset: Offset for pagination
-  static String getPokemonList({int limit = 20, int offset = 0}) {
+  static String getPokemonList({int limit = 20, int offset = 0, String orderList = 'asc'}) {
     return '''
       query GetPokemonList {
-        pokemon(limit: $limit, offset: $offset, order_by: {id: asc}) {
+        pokemon(limit: $limit, offset: $offset, order_by: {id: $orderList}, where: {is_default: {_eq: true}}) {
           id
           name
           pokemontypes {
@@ -17,6 +17,7 @@ class PokemonQueries {
               name
             }
           }
+          is_default
         }
       }
     ''';

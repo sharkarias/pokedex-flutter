@@ -54,6 +54,7 @@ class _PokemonListScreenState extends State<PokemonListScreen> {
       final response = await _apiService.fetchPokemonList(
         pageSize: 20,
         pageNumber: 1,
+        orderList: 'asc',
       );
 
       setState(() {
@@ -90,6 +91,10 @@ class _PokemonListScreenState extends State<PokemonListScreen> {
         _hasMore = response.nextCursor != null;
         _isLoading = false;
       });
+
+      //for debugging 
+      //print('Loaded page $_currentPage, total Pokemon: ${_pokemonList.length}');
+
     } catch (e) {
       setState(() {
         _isLoading = false;
