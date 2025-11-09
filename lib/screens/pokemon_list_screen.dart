@@ -127,6 +127,10 @@ class _PokemonListScreenState extends State<PokemonListScreen> {
               );
             },
           ),
+           IconButton(
+            icon: const Icon(Icons.refresh),
+            onPressed: _loadPokemon,
+          ),
         ],
       ),
       body: _buildBody(),

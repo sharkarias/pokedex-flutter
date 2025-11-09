@@ -384,4 +384,45 @@ Future<List<Pokemon>> searchPokemonByName(String searchTerm) async {
   return pokemonList;
 }
 
+
+/// Search Pokemon with multiple filters
+Future<List<Pokemon>> searchPokemonWithFilters({
+  String? searchTerm,
+  String? type,
+  int? generation,
+  bool? isLegendary,
+  bool? isMythical,
+}) async {
+  final QueryOptions options = QueryOptions(
+    document: gql(PokemonQueries.searchPokemonWithFilters(
+      searchTerm: searchTerm,
+      type: type,
+      generation: generation,
+      isLegendary: isLegendary,
+      isMythical: isMythical,
+    )),
+  );
+
+  final QueryResult result = await _client.query(options);
+
+  if (result.hasException) {
+    throw Exception('Failed to search Pokemon: ${result.exception}');
+  }
+
+  final List pokemonData = result.data?['pokemon'] ?? [];
+  
+  final List<Pokemon> pokemonList = [];
+  
+  for (var data in pokemonData) {
+    try {
+      final pokemon = await _parsePokemonFromGraphQL(data);
+      pokemonList.add(pokemon);
+    } catch (e) {
+      print('Error parsing Pokemon: ${data['name']}, Error: $e');
+    }
+  }
+
+  return pokemonList;
+}
+
 }

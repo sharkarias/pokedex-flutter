@@ -217,4 +217,135 @@ class PokemonQueries {
       }
     ''';
   }
+
+/// Query to search Pokemon with multiple filters
+/// 
+/// Parameters:
+/// - searchTerm: Partial name to search for (optional)
+/// - type: Pokemon type filter (optional)
+/// - generation: Generation number filter (optional)
+/// - isLegendary: Filter for legendary Pokemon (optional)
+/// - isMythical: Filter for mythical Pokemon (optional)
+static String searchPokemonWithFilters({
+  String? searchTerm,
+  String? type,
+  int? generation,
+  bool? isLegendary,
+  bool? isMythical,
+}) {
+  // Build the where clause dynamically
+  List<String> conditions = [];
+  
+  // Name search
+  if (searchTerm != null && searchTerm.isNotEmpty) {
+    conditions.add('name: {_ilike: "%$searchTerm%"}');
+  }
+  
+  // Type filter
+  if (type != null) {
+    conditions.add('pokemontypes: {type: {name: {_eq: "$type"}}}');
+  }
+  
+  // Generation filter (need to convert generation number to roman numeral)
+  if (generation != null) {
+    final genRoman = _getGenerationRoman(generation);
+    conditions.add('pokemonspecy: {generation: {name: {_eq: "generation-$genRoman"}}}');
+  }
+  
+  // Legendary filter
+  if (isLegendary == true) {
+    conditions.add('pokemonspecy: {is_legendary: {_eq: true}}');
+  }
+  
+  // Mythical filter
+  if (isMythical == true) {
+    conditions.add('pokemonspecy: {is_mythical: {_eq: true}}');
+  }
+  
+  // Combine all conditions
+  final whereClause = conditions.isEmpty ? '' : 'where: {${conditions.join(', ')}},';
+  
+  return '''
+    query SearchPokemonWithFilters {
+      pokemon($whereClause limit: 50, order_by: {id: asc}) {
+        id
+        name
+        height
+        weight
+        pokemontypes {
+          type {
+            name
+          }
+        }
+        pokemonabilities {
+          is_hidden
+          ability {
+            name
+            abilityeffecttexts(where: {language_id: {_eq: 9}}, limit: 1) {
+              short_effect
+            }
+          }
+        }
+        pokemonstats {
+          base_stat
+          stat {
+            name
+          }
+        }
+        pokemonspecy {
+          is_legendary
+          is_mythical
+          capture_rate
+          generation {
+            name
+          }
+          pokemoncolor {
+            name
+          }
+          pokemonegggroups {
+            egggroup {
+              name
+            }
+          }
+          pokemonspeciesflavortexts(
+            where: {language_id: {_eq: 9}}
+            limit: 1
+          ) {
+            flavor_text
+          }
+        }
+        pokemonmoves(
+          where: {movelearnmethod: {name: {_eq: "level-up"}}}
+          limit: 8
+          order_by: {level: asc}
+        ) {
+          level
+          move {
+            name
+          }
+          movelearnmethod {
+            name
+          }
+        }
+      }
+    }
+  ''';
+}
+
+// Helper method for generation conversion
+static String _getGenerationRoman(int generation) {
+  const romanNumerals = {
+    1: 'i',
+    2: 'ii',
+    3: 'iii',
+    4: 'iv',
+    5: 'v',
+    6: 'vi',
+    7: 'vii',
+    8: 'viii',
+    9: 'ix',
+  };
+  return romanNumerals[generation] ?? 'i';
+}
+
 }
