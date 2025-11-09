@@ -332,7 +332,7 @@ class _PokemonLiveSearchState extends State<PokemonLiveSearch> {
     return Scaffold(
       appBar: AppBar(
         title: const Text('Search Pokémon'),
-        backgroundColor: Theme.of(context).colorScheme.primary,
+        backgroundColor: Colors.red,
         foregroundColor: Colors.white,
       ),
       body: Column(
