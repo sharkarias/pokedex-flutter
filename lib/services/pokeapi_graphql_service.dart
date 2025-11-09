@@ -354,4 +354,34 @@ class PokeApiGraphQLService {
       return 1;
     }
   }
+
+
+/// Search Pokemon by name (partial match)
+Future<List<Pokemon>> searchPokemonByName(String searchTerm) async {
+  final QueryOptions options = QueryOptions(
+    document: gql(PokemonQueries.searchPokemonByName(searchTerm.toLowerCase())),
+  );
+
+  final QueryResult result = await _client.query(options);
+
+  if (result.hasException) {
+    throw Exception('Failed to search Pokemon: ${result.exception}');
+  }
+
+  final List pokemonData = result.data?['pokemon'] ?? [];
+  
+  final List<Pokemon> pokemonList = [];
+  
+  for (var data in pokemonData) {
+    try {
+      final pokemon = _parsePokemonBasicFromGraphQL(data);
+      pokemonList.add(pokemon);
+    } catch (e) {
+      print('Error parsing Pokemon: ${data['name']}, Error: $e');
+    }
+  }
+
+  return pokemonList;
+}
+
 }
