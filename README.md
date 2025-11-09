@@ -1,6 +1,7 @@
 # pokedex
 
-A new Flutter project.
+To run (for now): flutter run -t lib/attempt.dart
+
 
 ## Getting Started
 
