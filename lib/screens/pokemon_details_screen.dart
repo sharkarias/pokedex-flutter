@@ -1,3 +1,5 @@
+import 'dart:ui';
+
 import 'package:flutter/material.dart';
 import 'package:fl_chart/fl_chart.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -22,6 +24,9 @@ class PokemonDetailsScreen extends StatefulWidget {
 class _PokemonDetailsScreenState extends State<PokemonDetailsScreen>
     with SingleTickerProviderStateMixin {
   final PokeApiGraphQLService _apiService = PokeApiGraphQLService();
+  
+  // Maximum stat value for bar charts and radar (rn it is hardcoded, can be dynamic)
+  final double maxStatValue = 255.0;
   
   Pokemon? _pokemon;
   bool _isLoading = true;
@@ -198,7 +203,7 @@ class _PokemonDetailsScreenState extends State<PokemonDetailsScreen>
                   fontWeight: FontWeight.bold,
                   shadows: [
                     Shadow(
-                      blurRadius: 5.0,
+                      blurRadius: 1.0,
                       color: Colors.black,
                       offset: Offset(1.0, 1.0),
                     ),
@@ -434,47 +439,79 @@ class _PokemonDetailsScreenState extends State<PokemonDetailsScreen>
           const SizedBox(height: 16),
           SizedBox(
             height: 300,
-            child: RadarChart(
-              RadarChartData(
-                radarShape: RadarShape.polygon,
-                radarBorderData: const BorderSide(color: Colors.grey, width: 2),
-                gridBorderData: const BorderSide(color: Colors.grey, width: 1),
-                tickCount: 5,
-                ticksTextStyle: const TextStyle(fontSize: 10),
-                tickBorderData: const BorderSide(color: Colors.transparent),
-                getTitle: (index, angle) {
-                  switch (index) {
-                    case 0:
-                      return const RadarChartTitle(text: 'HP');
-                    case 1:
-                      return const RadarChartTitle(text: 'Atk');
-                    case 2:
-                      return const RadarChartTitle(text: 'Def');
-                    case 3:
-                      return const RadarChartTitle(text: 'SpA');
-                    case 4:
-                      return const RadarChartTitle(text: 'SpD');
-                    case 5:
-                      return const RadarChartTitle(text: 'Spe');
-                    default:
-                      return const RadarChartTitle(text: '');
-                  }
-                },
-                dataSets: [
-                  RadarDataSet(
-                    fillColor: _getTypeColor(pokemon.types.first).withOpacity(0.3),
-                    borderColor: _getTypeColor(pokemon.types.first),
-                    borderWidth: 2,
-                    dataEntries: [
-                      RadarEntry(value: pokemon.baseStats.hp / 255 * 100),
-                      RadarEntry(value: pokemon.baseStats.attack / 255 * 100),
-                      RadarEntry(value: pokemon.baseStats.defense / 255 * 100),
-                      RadarEntry(value: pokemon.baseStats.specialAttack / 255 * 100),
-                      RadarEntry(value: pokemon.baseStats.specialDefense / 255 * 100),
-                      RadarEntry(value: pokemon.baseStats.speed / 255 * 100),
-                    ],
+            child: Padding(
+              padding: const EdgeInsets.all(16),
+              child: RadarChart(
+                RadarChartData(
+                  radarShape: RadarShape.polygon,
+                  radarBackgroundColor: Colors.transparent,
+                  radarBorderData: BorderSide(
+                    color: _getTypeColor(pokemon.types.first).withOpacity(0.3),
+                    width: 2,
                   ),
-                ],
+                  gridBorderData: BorderSide(
+                    color: Colors.grey[300]!,
+                    width: 1,
+                  ),
+                  tickCount: 6,
+                  ticksTextStyle: TextStyle(
+                    fontSize: 0,
+                    color: Colors.blue[600],
+                  ),
+                  tickBorderData: const BorderSide(color: Colors.transparent),
+                  getTitle: (index, angle) {
+                    switch (index) {
+                      case 0:
+                        return RadarChartTitle(
+                          text: 'HP\n${pokemon.baseStats.hp}',
+                          angle: angle,
+                        );
+                      case 1:
+                        return RadarChartTitle(
+                          text: 'Attack\n${pokemon.baseStats.attack}',
+                          angle: 0,
+                        );
+                      case 2:
+                        return RadarChartTitle(
+                          text: 'Defense\n${pokemon.baseStats.defense}',
+                          angle: 0,
+                        );
+                      case 3:
+                        return RadarChartTitle(
+                          text: 'Sp.Atk\n${pokemon.baseStats.specialAttack}',
+                          angle: 0,
+                        );
+                      case 4:
+                        return RadarChartTitle(
+                          text: 'Sp.Def\n${pokemon.baseStats.specialDefense}',
+                          angle: 0,
+                        );
+                      case 5:
+                        return RadarChartTitle(
+                          text: 'Speed\n${pokemon.baseStats.speed}',
+                          angle: 0,
+                        );
+                      default:
+                        return const RadarChartTitle(text: '');
+                    }
+                  },
+                  dataSets: [
+                    RadarDataSet(
+                      fillColor: _getTypeColor(pokemon.types.first).withOpacity(0.2),
+                      borderColor: _getTypeColor(pokemon.types.first),
+                      borderWidth: 3,
+                      entryRadius: 4,
+                      dataEntries: [
+                        RadarEntry(value: (pokemon.baseStats.hp / maxStatValue) * 100),
+                        RadarEntry(value: (pokemon.baseStats.attack / maxStatValue) * 100),
+                        RadarEntry(value: (pokemon.baseStats.defense / maxStatValue) * 100),
+                        RadarEntry(value: (pokemon.baseStats.specialAttack / maxStatValue) * 100),
+                        RadarEntry(value: (pokemon.baseStats.specialDefense / maxStatValue) * 100),
+                        RadarEntry(value: (pokemon.baseStats.speed / maxStatValue) * 100),
+                      ],
+                    ),
+                  ],
+                ),
               ),
             ),
           ),
@@ -503,7 +540,7 @@ class _PokemonDetailsScreenState extends State<PokemonDetailsScreen>
   }
 
   Widget _buildStatBar(String label, int value, {bool isTotal = false}) {
-    final maxValue = isTotal ? 720 : 255;
+    final maxValue = isTotal ? 720 : maxStatValue;
     final percentage = (value / maxValue * 100).clamp(0.0, 100.0);
 
     return Padding(
