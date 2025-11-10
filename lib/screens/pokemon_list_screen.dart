@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import '../services/pokeapi_graphql_service.dart';
 import '../pokemon_card.dart';
 import '../models/pokemon.dart';
+import '../services/pokemon_live_search.dart';
 
 class PokemonListScreen extends StatefulWidget {
   const PokemonListScreen({super.key});
@@ -112,7 +113,7 @@ class _PokemonListScreenState extends State<PokemonListScreen> {
     return Scaffold(
       appBar: AppBar(
         title: const Text(
-          'Pokedex',
+          'Pokedex!',
           style: TextStyle(fontWeight: FontWeight.bold),
         ),
         backgroundColor: Colors.red,
@@ -120,6 +121,18 @@ class _PokemonListScreenState extends State<PokemonListScreen> {
         elevation: 0,
         actions: [
           IconButton(
+            icon: const Icon(Icons.search),
+            tooltip: 'Search Pokémon',
+            onPressed: () {
+              Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (context) => const PokemonLiveSearch(),
+                ),
+              );
+            },
+          ),
+           IconButton(
             icon: const Icon(Icons.refresh),
             onPressed: _loadPokemon,
           ),
