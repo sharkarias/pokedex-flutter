@@ -109,6 +109,10 @@ class PokeApiGraphQLService {
     final spriteUrl = 'https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/$id.png';
     final officialArtworkUrl = 'https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/other/official-artwork/$id.png';
 
+    // Generate shiny sprite URLs
+    final shinySpriteeUrl = 'https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/shiny/$id.png';
+    final shinyOfficialArtworkUrl = 'https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/other/official-artwork/shiny/$id.png';
+
     // Return Pokemon with minimal data (defaults for unused fields)
     return Pokemon(
       nationalDex: id,
@@ -116,7 +120,9 @@ class PokeApiGraphQLService {
       generation: 1, // Default, not needed for list view
       types: types,
       spriteUrl: spriteUrl,
+      shinySpriteeUrl: shinySpriteeUrl,
       officialArtworkUrl: officialArtworkUrl,
+      shinyOfficialArtworkUrl: shinyOfficialArtworkUrl,
       heightM: null,
       weightKg: null,
       baseStats: BaseStats(
@@ -132,7 +138,7 @@ class PokeApiGraphQLService {
       eggGroups: [],
       isLegendary: false,
       isMythical: false,
-      forms: ['Normal'],
+      forms: [],
       evolutionChain: [],
       movesSample: [],
       flavorText: null,
@@ -257,7 +263,9 @@ class PokeApiGraphQLService {
 
     // Generate sprite URLs (PokeAPI still hosts these)
     final spriteUrl = 'https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/$id.png';
+    final shinySpriteeUrl = 'https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/shiny/$id.png';
     final officialArtworkUrl = 'https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/other/official-artwork/$id.png';
+    final shinyOfficialArtworkUrl = 'https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/other/official-artwork/shiny/$id.png';
 
     return Pokemon(
       nationalDex: id,
@@ -265,7 +273,9 @@ class PokeApiGraphQLService {
       generation: generation,
       types: types,
       spriteUrl: spriteUrl,
+      shinySpriteeUrl: shinySpriteeUrl,
       officialArtworkUrl: officialArtworkUrl,
+      shinyOfficialArtworkUrl: shinyOfficialArtworkUrl,
       heightM: (data['height'] as int) / 10.0,
       weightKg: (data['weight'] as int) / 10.0,
       baseStats: baseStats,
@@ -273,7 +283,7 @@ class PokeApiGraphQLService {
       eggGroups: eggGroups,
       isLegendary: isLegendary,
       isMythical: isMythical,
-      forms: ['Normal'],
+      forms: [],
       evolutionChain: [],
       movesSample: movesSample,
       flavorText: flavorText,

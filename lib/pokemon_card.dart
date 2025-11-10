@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import '../models/pokemon.dart';
+import '../screens/pokemon_details_screen.dart';
 
 class PokemonCard extends StatelessWidget {
   final Pokemon pokemon;
@@ -56,7 +57,15 @@ class PokemonCard extends StatelessWidget {
       elevation: 4,
       child: InkWell(
         onTap: () {
-          _showPokemonDetails(context);
+          Navigator.push(
+            context,
+            MaterialPageRoute(
+              builder: (context) => PokemonDetailsScreen(
+                pokemonId: pokemon.nationalDex,
+                pokemonName: pokemon.name,
+              ),
+            ),
+          );
         },
         child: Padding(
           padding: const EdgeInsets.all(12),
@@ -147,273 +156,6 @@ class PokemonCard extends StatelessWidget {
             ],
           ),
         ),
-      ),
-    );
-  }
-
-  void _showPokemonDetails(BuildContext context) {
-    showModalBottomSheet(
-      context: context,
-      isScrollControlled: true,
-      builder: (context) {
-        return DraggableScrollableSheet(
-          initialChildSize: 0.8,
-          minChildSize: 0.5,
-          maxChildSize: 0.95,
-          builder: (context, scrollController) {
-            return Container(
-              padding: const EdgeInsets.all(16),
-              child: ListView(
-                controller: scrollController,
-                children: [
-                  // Header
-                  Center(
-                    child: Container(
-                      width: 40,
-                      height: 4,
-                      decoration: BoxDecoration(
-                        color: Colors.grey[300],
-                        borderRadius: BorderRadius.circular(2),
-                      ),
-                    ),
-                  ),
-                  const SizedBox(height: 16),
-                  
-                  // Pokemon Image
-                  Center(
-                    child: pokemon.officialArtworkUrl != null
-                        ? Image.network(
-                            pokemon.officialArtworkUrl!,
-                            height: 200,
-                            errorBuilder: (context, error, stackTrace) {
-                              return pokemon.spriteUrl != null
-                                  ? Image.network(pokemon.spriteUrl!, height: 200)
-                                  : const Icon(Icons.catching_pokemon, size: 100);
-                            },
-                          )
-                        : pokemon.spriteUrl != null
-                            ? Image.network(pokemon.spriteUrl!, height: 200)
-                            : const Icon(Icons.catching_pokemon, size: 100),
-                  ),
-                  const SizedBox(height: 16),
-                  
-                  // Name and Number
-                  Center(
-                    child: Column(
-                      children: [
-                        Text(
-                          pokemon.name,
-                          style: const TextStyle(
-                            fontSize: 28,
-                            fontWeight: FontWeight.bold,
-                          ),
-                        ),
-                        Text(
-                          '#${pokemon.nationalDex.toString().padLeft(3, '0')}',
-                          style: TextStyle(
-                            fontSize: 18,
-                            color: Colors.grey[600],
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                  const SizedBox(height: 16),
-                  
-                  // Types
-                  Center(
-                    child: Row(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: pokemon.types.map((type) {
-                        return Container(
-                          margin: const EdgeInsets.symmetric(horizontal: 4),
-                          padding: const EdgeInsets.symmetric(
-                            horizontal: 16,
-                            vertical: 6,
-                          ),
-                          decoration: BoxDecoration(
-                            color: _getTypeColor(type),
-                            borderRadius: BorderRadius.circular(16),
-                          ),
-                          child: Text(
-                            type,
-                            style: const TextStyle(
-                              color: Colors.white,
-                              fontSize: 14,
-                              fontWeight: FontWeight.bold,
-                            ),
-                          ),
-                        );
-                      }).toList(),
-                    ),
-                  ),
-                  const SizedBox(height: 16),
-                  
-                  // Flavor Text
-                  if (pokemon.flavorText != null)
-                    Padding(
-                      padding: const EdgeInsets.symmetric(vertical: 8),
-                      child: Text(
-                        pokemon.flavorText!,
-                        textAlign: TextAlign.center,
-                        style: TextStyle(
-                          fontSize: 14,
-                          color: Colors.grey[700],
-                          fontStyle: FontStyle.italic,
-                        ),
-                      ),
-                    ),
-                  
-                  const Divider(height: 32),
-                  
-                  // Physical Info
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceAround,
-                    children: [
-                      _buildInfoColumn('Height', '${pokemon.heightM ?? 0} m'),
-                      _buildInfoColumn('Weight', '${pokemon.weightKg ?? 0} kg'),
-                      _buildInfoColumn('Generation', '${pokemon.generation}'),
-                    ],
-                  ),
-                  
-                  const Divider(height: 32),
-                  
-                  // Base Stats
-                  const Text(
-                    'Base Stats',
-                    style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
-                  ),
-                  const SizedBox(height: 8),
-                  _buildStatBar('HP', pokemon.baseStats.hp),
-                  _buildStatBar('Attack', pokemon.baseStats.attack),
-                  _buildStatBar('Defense', pokemon.baseStats.defense),
-                  _buildStatBar('Sp. Atk', pokemon.baseStats.specialAttack),
-                  _buildStatBar('Sp. Def', pokemon.baseStats.specialDefense),
-                  _buildStatBar('Speed', pokemon.baseStats.speed),
-                  _buildStatBar('Total', pokemon.baseStats.total, isTotal: true),
-                  
-                  const Divider(height: 32),
-                  
-                  // Abilities
-                  const Text(
-                    'Abilities',
-                    style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
-                  ),
-                  const SizedBox(height: 8),
-                  ...pokemon.abilities.map((ability) {
-                    return Padding(
-                      padding: const EdgeInsets.only(bottom: 8),
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Row(
-                            children: [
-                              Text(
-                                ability.name,
-                                style: const TextStyle(
-                                  fontWeight: FontWeight.bold,
-                                  fontSize: 14,
-                                ),
-                              ),
-                              if (ability.isHidden)
-                                Container(
-                                  margin: const EdgeInsets.only(left: 8),
-                                  padding: const EdgeInsets.symmetric(
-                                    horizontal: 6,
-                                    vertical: 2,
-                                  ),
-                                  decoration: BoxDecoration(
-                                    color: Colors.orange,
-                                    borderRadius: BorderRadius.circular(8),
-                                  ),
-                                  child: const Text(
-                                    'Hidden',
-                                    style: TextStyle(
-                                      color: Colors.white,
-                                      fontSize: 10,
-                                    ),
-                                  ),
-                                ),
-                            ],
-                          ),
-                          Text(
-                            ability.shortEffect,
-                            style: TextStyle(
-                              fontSize: 12,
-                              color: Colors.grey[600],
-                            ),
-                          ),
-                        ],
-                      ),
-                    );
-                  }),
-                ],
-              ),
-            );
-          },
-        );
-      },
-    );
-  }
-
-  Widget _buildInfoColumn(String label, String value) {
-    return Column(
-      children: [
-        Text(
-          label,
-          style: TextStyle(
-            fontSize: 12,
-            color: Colors.grey[600],
-          ),
-        ),
-        const SizedBox(height: 4),
-        Text(
-          value,
-          style: const TextStyle(
-            fontSize: 16,
-            fontWeight: FontWeight.bold,
-          ),
-        ),
-      ],
-    );
-  }
-
-  Widget _buildStatBar(String label, int value, {bool isTotal = false}) {
-    final maxValue = isTotal ? 720 : 255;
-    final percentage = (value / maxValue).clamp(0.0, 1.0);
-    
-    return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 4),
-      child: Row(
-        children: [
-          SizedBox(
-            width: 80,
-            child: Text(
-              label,
-              style: const TextStyle(fontSize: 12),
-            ),
-          ),
-          SizedBox(
-            width: 40,
-            child: Text(
-              value.toString(),
-              style: const TextStyle(
-                fontSize: 12,
-                fontWeight: FontWeight.bold,
-              ),
-            ),
-          ),
-          Expanded(
-            child: LinearProgressIndicator(
-              value: percentage,
-              backgroundColor: Colors.grey[300],
-              valueColor: AlwaysStoppedAnimation<Color>(
-                isTotal ? Colors.blue : Colors.green,
-              ),
-              minHeight: 8,
-            ),
-          ),
-        ],
       ),
     );
   }
