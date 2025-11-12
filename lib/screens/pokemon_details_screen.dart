@@ -685,8 +685,7 @@ class _PokemonDetailsScreenState extends State<PokemonDetailsScreen>
             'Evolution Chain',
             style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
           ),
-          const SizedBox(height: 32),
-          // Vertical evolution tree
+          const SizedBox(height: 30),
           Column(
             children: pokemon.evolutionChain.asMap().entries.map((entry) {
               final index = entry.key;
@@ -803,7 +802,7 @@ class _PokemonDetailsScreenState extends State<PokemonDetailsScreen>
                                   : Colors.black,
                             ),
                           ),
-                          const SizedBox(height: 4),
+                          const SizedBox(height: 2),
                           Text(
                             'Stage ${index + 1}',
                             style: TextStyle(
@@ -842,7 +841,7 @@ class _PokemonDetailsScreenState extends State<PokemonDetailsScreen>
                           color: Colors.grey[600],
                           size: 32,
                         ),
-                        if (stage.trigger != null) ...[
+                        if (pokemon.evolutionChain[index + 1].trigger != null) ...[
                           const SizedBox(height: 8),
                           Container(
                             padding: const EdgeInsets.symmetric(
@@ -861,13 +860,13 @@ class _PokemonDetailsScreenState extends State<PokemonDetailsScreen>
                               mainAxisSize: MainAxisSize.min,
                               children: [
                                 Icon(
-                                  _getEvolutionIcon(stage.trigger!.trigger),
+                                  _getEvolutionIcon(pokemon.evolutionChain[index + 1].trigger!.trigger),
                                   size: 18,
                                   color: Colors.blue[700],
                                 ),
                                 const SizedBox(width: 8),
                                 Text(
-                                  stage.trigger!.getDisplayText(),
+                                  pokemon.evolutionChain[index + 1].trigger!.getDisplayText(),
                                   style: TextStyle(
                                     fontSize: 14,
                                     fontWeight: FontWeight.bold,
