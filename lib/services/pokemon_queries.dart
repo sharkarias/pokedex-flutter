@@ -234,39 +234,31 @@ static String searchPokemonWithFilters({
   bool? isLegendary,
   bool? isMythical,
 }) {
-  // Build the where clause dynamically
   List<String> conditions = [];
   
-  // Name search
   if (searchTerm != null && searchTerm.isNotEmpty) {
     conditions.add('name: {_ilike: "%$searchTerm%"}');
   }
   
-  // Type filter
   if (type != null) {
     conditions.add('pokemontypes: {type: {name: {_eq: "$type"}}}');
   }
   
-  // Generation filter (need to convert generation number to roman numeral)
   if (generation != null) {
     final genRoman = _getGenerationRoman(generation);
     conditions.add('pokemonspecy: {generation: {name: {_eq: "generation-$genRoman"}}}');
   }
   
-  // Legendary filter
   if (isLegendary == true) {
     conditions.add('pokemonspecy: {is_legendary: {_eq: true}}');
   }
   
-  // Mythical filter
   if (isMythical == true) {
     conditions.add('pokemonspecy: {is_mythical: {_eq: true}}');
   }
   
-  // Combine all conditions
   final whereClause = conditions.isEmpty ? '' : 'where: {${conditions.join(', ')}},';
   
-  // Return a lightweight result for list/search views — only fields required for list UI
   return '''
     query SearchPokemonWithFilters {
       pokemon($whereClause limit: 50, order_by: {id: asc}) {
