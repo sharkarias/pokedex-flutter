@@ -41,6 +41,8 @@ class _PokemonLiveSearchState extends State<PokemonLiveSearch> {
     super.dispose();
   }
 
+/*every time there's some change in the search bar, it will wait
+for 1 second of inactivity before performing the search*/
   void _onSearchChanged() {
     if (_debounce?.isActive ?? false) _debounce!.cancel();
 
@@ -60,6 +62,7 @@ class _PokemonLiveSearchState extends State<PokemonLiveSearch> {
     });
   }
 
+  
   Future<void> _performSearch() async {
     final searchTerm = _searchController.text.trim();
     
