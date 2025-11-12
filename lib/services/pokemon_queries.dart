@@ -6,6 +6,7 @@ class PokemonQueries {
   /// Parameters:
   /// - limit: Number of Pokemon to fetch
   /// - offset: Offset for pagination
+  /// - orderList: 'asc' or 'desc' for ordering the list
   static String getPokemonList({int limit = 20, int offset = 0, String orderList = 'asc'}) {
     return '''
       query GetPokemonList {

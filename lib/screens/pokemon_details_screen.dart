@@ -695,29 +695,43 @@ class _PokemonDetailsScreenState extends State<PokemonDetailsScreen>
 
               return Column(
                 children: [
-                  // Evolution stage node
-                  Container(
-                    width: double.infinity,
-                    decoration: BoxDecoration(
-                      gradient: isCurrentPokemon
-                          ? LinearGradient(
-                              colors: [
-                                _getTypeColor(pokemon.types.first).withOpacity(0.2),
-                                _getTypeColor(pokemon.types.first).withOpacity(0.1),
-                              ],
-                            )
-                          : null,
-                      border: Border.all(
-                        color: isCurrentPokemon
-                            ? _getTypeColor(pokemon.types.first)
-                            : Colors.grey[300]!,
-                        width: isCurrentPokemon ? 3 : 1,
+                  // Evolution stage node - clickable
+                  InkWell(
+                    onTap: () {
+                      // Navigate to this Pokemon's details
+                      Navigator.pushReplacement(
+                        context,
+                        MaterialPageRoute(
+                          builder: (context) => PokemonDetailsScreen(
+                            pokemonId: stage.id,
+                            pokemonName: stage.name,
+                          ),
+                        ),
+                      );
+                    },
+                    borderRadius: BorderRadius.circular(16),
+                    child: Container(
+                      width: double.infinity,
+                      decoration: BoxDecoration(
+                        gradient: isCurrentPokemon
+                            ? LinearGradient(
+                                colors: [
+                                  _getTypeColor(pokemon.types.first).withOpacity(0.2),
+                                  _getTypeColor(pokemon.types.first).withOpacity(0.1),
+                                ],
+                              )
+                            : null,
+                        border: Border.all(
+                          color: isCurrentPokemon
+                              ? _getTypeColor(pokemon.types.first)
+                              : Colors.grey[300]!,
+                          width: isCurrentPokemon ? 3 : 1,
+                        ),
+                        borderRadius: BorderRadius.circular(16),
                       ),
-                      borderRadius: BorderRadius.circular(16),
-                    ),
-                    child: Padding(
-                      padding: const EdgeInsets.all(20),
-                      child: Column(
+                      child: Padding(
+                        padding: const EdgeInsets.all(20),
+                        child: Column(
                         children: [
                           // Pokemon sprite
                           Stack(
@@ -810,9 +824,22 @@ class _PokemonDetailsScreenState extends State<PokemonDetailsScreen>
                               color: Colors.grey[600],
                             ),
                           ),
+                          // Show previous evolution info
+                          if (index > 0) ...[
+                            const SizedBox(height: 4),
+                            Text(
+                              'From: ${pokemon.evolutionChain[index - 1].name}',
+                              style: TextStyle(
+                                fontSize: 11,
+                                color: Colors.grey[500],
+                                fontStyle: FontStyle.italic,
+                              ),
+                            ),
+                          ],
                         ],
                       ),
                     ),
+                  ),
                   ),
                   
                   // Evolution arrow and trigger
@@ -942,9 +969,9 @@ class _PokemonDetailsScreenState extends State<PokemonDetailsScreen>
                 child: Row(
                   children: [
                     _buildFilterChip('Level Up', 'level-up'),
-                    _buildFilterChip('TM/HM', 'machine'),
-                    _buildFilterChip('Tutor', 'tutor'),
-                    _buildFilterChip('Egg', 'egg'),
+                    //_buildFilterChip('TM/HM', 'machine'),
+                    //_buildFilterChip('Tutor', 'tutor'),
+                    //_buildFilterChip('Egg', 'egg'),
                   ],
                 ),
               ),
