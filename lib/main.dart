@@ -42,15 +42,15 @@ class _SplashScreenState extends State<SplashScreen>
     super.initState();
 
     // Start the fade-in animation shortly after build
-    Future.delayed(const Duration(seconds: 2), () {
+    Future.delayed(const Duration(milliseconds: 200), () {
       if (!mounted) return;
       setState(() {
         _opacity = 1.0;
       });
     });
 
-    // Navigate to the real home page after 2 seconds
-    Future.delayed(const Duration(seconds: 2), () {
+    // Navigate to the real home page after 2 milliseconds
+    Future.delayed(const Duration(milliseconds: 200), () {
       if (!mounted) return;
       Navigator.of(context).pushReplacement(
         MaterialPageRoute(
