@@ -258,6 +258,74 @@ class PokeApiGraphQLService {
       );
     }).toList();
 
+    // Parse evolution chain
+    List<EvolutionStage> evolutionChain = [];
+    try {
+      if (speciesData['evolutionchain'] != null) {
+        final evolutionChainData = speciesData['evolutionchain'];
+        final speciesList = evolutionChainData['pokemonspecies'] as List?;
+        
+        print('Evolution chain data found: ${speciesList?.length ?? 0} species');
+        
+        if (speciesList != null && speciesList.isNotEmpty) {
+          // Sort by order to ensure proper evolution sequence
+          final sortedSpecies = List<Map<String, dynamic>>.from(speciesList);
+          sortedSpecies.sort((a, b) => (a['order'] as int).compareTo(b['order'] as int));
+          
+          for (var speciesInfo in sortedSpecies) {
+            final speciesId = speciesInfo['id'] as int;
+            final speciesName = _capitalize(speciesInfo['name'] as String);
+            final evolvesFromId = speciesInfo['evolves_from_species_id'] as int?;
+            
+            // Get Pokemon ID from the default Pokemon
+            int? pokemonId;
+            final pokemonsList = speciesInfo['pokemons'] as List?;
+            if (pokemonsList != null && pokemonsList.isNotEmpty) {
+              pokemonId = pokemonsList[0]['id'] as int?;
+            }
+            
+            // Parse evolution trigger if this Pokemon evolves from another
+            EvolutionTrigger? trigger;
+            if (evolvesFromId != null) {
+              final evolutionsData = speciesInfo['pokemonevolutions'] as List?;
+              if (evolutionsData != null && evolutionsData.isNotEmpty) {
+                final evoData = evolutionsData[0];
+                
+                final triggerName = evoData['evolutiontrigger']?['name'] as String? ?? 'level-up';
+                final minLevel = evoData['min_level'] as int?;
+                final minHappiness = evoData['min_happiness'] as int?;
+                final timeOfDay = evoData['time_of_day'] as String?;
+                final itemName = evoData['item']?['name'] as String?;
+                final locationName = evoData['location']?['name'] as String?;
+                
+                trigger = EvolutionTrigger(
+                  trigger: triggerName,
+                  minLevel: minLevel,
+                  item: itemName != null ? _capitalize(itemName) : null,
+                  minHappiness: minHappiness,
+                  timeOfDay: timeOfDay,
+                  location: locationName != null ? _capitalize(locationName) : null,
+                );
+              }
+            }
+            
+            evolutionChain.add(EvolutionStage(
+              name: speciesName,
+              id: pokemonId ?? speciesId,
+              trigger: trigger,
+            ));
+            
+            print('Added to chain: $speciesName (ID: ${pokemonId ?? speciesId})${trigger != null ? ' with trigger' : ''}');
+          }
+          
+          print('Total evolution chain length: ${evolutionChain.length}');
+        }
+      }
+    } catch (e) {
+      print('Error parsing evolution chain: $e');
+      // Continue without evolution data rather than failing completely
+    }
+
     // Calculate damage relations
     final damageRelations = await _calculateDamageRelations(types);
 
@@ -284,7 +352,7 @@ class PokeApiGraphQLService {
       isLegendary: isLegendary,
       isMythical: isMythical,
       forms: [],
-      evolutionChain: [],
+      evolutionChain: evolutionChain,
       movesSample: movesSample,
       flavorText: flavorText,
       captureRate: captureRate,

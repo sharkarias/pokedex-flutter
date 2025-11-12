@@ -149,6 +149,7 @@ class PokemonQueries {
             }
           }
           pokemonspecy {
+            id
             is_legendary
             is_mythical
             capture_rate
@@ -169,10 +170,41 @@ class PokemonQueries {
             ) {
               flavor_text
             }
+            evolutionchain {
+              id
+              pokemonspecies(order_by: {order: asc}) {
+                id
+                name
+                order
+                evolves_from_species_id
+                pokemonevolutions {
+                  min_level
+                  min_happiness
+                  min_beauty
+                  min_affection
+                  time_of_day
+                  needs_overworld_rain
+                  turn_upside_down
+                  evolutiontrigger {
+                    name
+                  }
+                  item {
+                    name
+                  }
+                  location {
+                    name
+                  }
+                }
+                pokemons(where: {is_default: {_eq: true}}, limit: 1) {
+                  id
+                  name
+                }
+              }
+            }
           }
           pokemonmoves(
             where: {movelearnmethod: {name: {_eq: "level-up"}}}
-            limit: 8
+            limit: 20
             order_by: {level: asc}
           ) {
             level
