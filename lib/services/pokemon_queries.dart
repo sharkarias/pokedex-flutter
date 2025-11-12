@@ -266,68 +266,18 @@ static String searchPokemonWithFilters({
   // Combine all conditions
   final whereClause = conditions.isEmpty ? '' : 'where: {${conditions.join(', ')}},';
   
+  // Return a lightweight result for list/search views — only fields required for list UI
   return '''
     query SearchPokemonWithFilters {
       pokemon($whereClause limit: 50, order_by: {id: asc}) {
         id
         name
-        height
-        weight
         pokemontypes {
           type {
             name
           }
         }
-        pokemonabilities {
-          is_hidden
-          ability {
-            name
-            abilityeffecttexts(where: {language_id: {_eq: 9}}, limit: 1) {
-              short_effect
-            }
-          }
-        }
-        pokemonstats {
-          base_stat
-          stat {
-            name
-          }
-        }
-        pokemonspecy {
-          is_legendary
-          is_mythical
-          capture_rate
-          generation {
-            name
-          }
-          pokemoncolor {
-            name
-          }
-          pokemonegggroups {
-            egggroup {
-              name
-            }
-          }
-          pokemonspeciesflavortexts(
-            where: {language_id: {_eq: 9}}
-            limit: 1
-          ) {
-            flavor_text
-          }
-        }
-        pokemonmoves(
-          where: {movelearnmethod: {name: {_eq: "level-up"}}}
-          limit: 8
-          order_by: {level: asc}
-        ) {
-          level
-          move {
-            name
-          }
-          movelearnmethod {
-            name
-          }
-        }
+        is_default
       }
     }
   ''';

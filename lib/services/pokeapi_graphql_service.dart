@@ -429,9 +429,11 @@ Future<List<Pokemon>> searchPokemonWithFilters({
   
   final List<Pokemon> pokemonList = [];
   
+  // For live search / list views we should keep results lightweight.
+  // Parse basic info only (no extra per-item GraphQL queries) to avoid many network calls and long waits.
   for (var data in pokemonData) {
     try {
-      final pokemon = await _parsePokemonFromGraphQL(data);
+      final pokemon = _parsePokemonBasicFromGraphQL(data);
       pokemonList.add(pokemon);
     } catch (e) {
       print('Error parsing Pokemon: ${data['name']}, Error: $e');

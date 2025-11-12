@@ -34,8 +34,11 @@ class _PokemonDetailsScreenState extends State<PokemonDetailsScreen>
   bool _isFavorite = false;
   bool _showShiny = false;
   String _selectedMoveFilter = 'level-up';
-  late TabController _tabController;
 
+  /*tabController controls the tabs where you can see different informations
+  from a specific pokemon, such as stats, moves, evolution, etc */
+  late TabController _tabController; 
+  
   @override
   void initState() {
     super.initState();
