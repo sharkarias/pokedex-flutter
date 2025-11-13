@@ -108,11 +108,13 @@ class EvolutionStage {
   final String name;
   final int id;
   final EvolutionTrigger? trigger;
+  final int? evolvesFromId;
 
   EvolutionStage({
     required this.name,
     required this.id,
     this.trigger,
+    this.evolvesFromId,
   });
 
   factory EvolutionStage.fromJson(Map<String, dynamic> json) {
@@ -122,6 +124,7 @@ class EvolutionStage {
       trigger: json['trigger'] != null 
           ? EvolutionTrigger.fromJson(json['trigger'] as Map<String, dynamic>)
           : null,
+      evolvesFromId: json['evolves_from_id'] as int?,
     );
   }
 }

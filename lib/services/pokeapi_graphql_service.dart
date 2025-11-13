@@ -313,9 +313,10 @@ class PokeApiGraphQLService {
               name: speciesName,
               id: pokemonId ?? speciesId,
               trigger: trigger,
+              evolvesFromId: evolvesFromId,
             ));
             
-            print('Added to chain: $speciesName (ID: ${pokemonId ?? speciesId})${trigger != null ? ' with trigger' : ''}');
+            print('Added to chain: $speciesName (ID: ${pokemonId ?? speciesId})${trigger != null ? ' with trigger' : ''}${evolvesFromId != null ? ' from $evolvesFromId' : ''}');
           }
           
           print('Total evolution chain length: ${evolutionChain.length}');

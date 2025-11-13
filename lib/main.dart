@@ -49,8 +49,8 @@ class _SplashScreenState extends State<SplashScreen>
       });
     });
 
-    // Navigate to the real home page after 2 milliseconds
-    Future.delayed(const Duration(milliseconds: 200), () {
+    // Navigate to the real home page after 3 seconds
+    Future.delayed(const Duration(seconds: 3), () {
       if (!mounted) return;
       Navigator.of(context).pushReplacement(
         MaterialPageRoute(

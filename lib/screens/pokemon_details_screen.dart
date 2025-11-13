@@ -825,15 +825,24 @@ class _PokemonDetailsScreenState extends State<PokemonDetailsScreen>
                             ),
                           ),
                           // Show previous evolution info
-                          if (index > 0) ...[
+                          if (stage.evolvesFromId != null) ...[
                             const SizedBox(height: 4),
-                            Text(
-                              'From: ${pokemon.evolutionChain[index - 1].name}',
-                              style: TextStyle(
-                                fontSize: 11,
-                                color: Colors.grey[500],
-                                fontStyle: FontStyle.italic,
-                              ),
+                            Builder(
+                              builder: (context) {
+                                // Find the Pokemon this one evolved from
+                                final evolvedFrom = pokemon.evolutionChain.firstWhere(
+                                  (e) => e.id == stage.evolvesFromId,
+                                  orElse: () => pokemon.evolutionChain[index > 0 ? index - 1 : 0],
+                                );
+                                return Text(
+                                  'From: ${evolvedFrom.name}',
+                                  style: TextStyle(
+                                    fontSize: 11,
+                                    color: Colors.grey[500],
+                                    fontStyle: FontStyle.italic,
+                                  ),
+                                );
+                              },
                             ),
                           ],
                         ],
