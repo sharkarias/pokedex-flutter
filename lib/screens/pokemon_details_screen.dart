@@ -677,6 +677,48 @@ class _PokemonDetailsScreenState extends State<PokemonDetailsScreen>
       );
     }
 
+    // Build the tree structure
+    final Map<int, List<EvolutionStage>> evolutionsMap = {};
+    EvolutionStage? root;
+
+    for (var stage in pokemon.evolutionChain) {
+      if (stage.evolvesFromId == null) {
+        root = stage;
+      } else {
+        evolutionsMap.putIfAbsent(stage.evolvesFromId!, () => []).add(stage);
+      }
+    }
+    
+    // Fallback if no root found
+    if (root == null && pokemon.evolutionChain.isNotEmpty) {
+       final allIds = pokemon.evolutionChain.map((e) => e.id).toSet();
+       final childrenIds = pokemon.evolutionChain.map((e) => e.evolvesFromId).whereType<int>().toSet();
+       final potentialRoots = allIds.difference(childrenIds);
+       
+       if (potentialRoots.isNotEmpty) {
+         root = pokemon.evolutionChain.firstWhere((e) => e.id == potentialRoots.first);
+       } else {
+         root = pokemon.evolutionChain.first;
+       }
+    }
+
+    if (root == null) return const SizedBox();
+
+    // Build layers
+    List<List<EvolutionStage>> layers = [];
+    List<EvolutionStage> currentLayer = [root];
+    
+    while (currentLayer.isNotEmpty) {
+      layers.add(currentLayer);
+      List<EvolutionStage> nextLayer = [];
+      for (var stage in currentLayer) {
+        if (evolutionsMap.containsKey(stage.id)) {
+          nextLayer.addAll(evolutionsMap[stage.id]!);
+        }
+      }
+      currentLayer = nextLayer;
+    }
+
     return SingleChildScrollView(
       padding: const EdgeInsets.all(16),
       child: Column(
@@ -685,259 +727,198 @@ class _PokemonDetailsScreenState extends State<PokemonDetailsScreen>
             'Evolution Chain',
             style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
           ),
-          const SizedBox(height: 30),
-          Column(
-            children: pokemon.evolutionChain.asMap().entries.map((entry) {
-              final index = entry.key;
-              final stage = entry.value;
-              final isLast = index == pokemon.evolutionChain.length - 1;
-              final isCurrentPokemon = stage.name.toLowerCase() == pokemon.name.toLowerCase();
-
-              return Column(
-                children: [
-                  // Evolution stage node - clickable
-                  InkWell(
-                    onTap: () {
-                      // Navigate to this Pokemon's details
-                      Navigator.pushReplacement(
-                        context,
-                        MaterialPageRoute(
-                          builder: (context) => PokemonDetailsScreen(
-                            pokemonId: stage.id,
-                            pokemonName: stage.name,
-                          ),
+          const SizedBox(height: 20),
+          ...List.generate(layers.length, (index) {
+            final layer = layers[index];
+            final isSingle = layer.length == 1;
+            
+            return Column(
+              children: [
+                if (index > 0) const SizedBox(height: 10),
+                if (isSingle)
+                  _buildEvolutionNode(layer.first, pokemon, isFullWidth: true)
+                else
+                  Column(
+                    children: [
+                      SizedBox(
+                        height: 200,
+                        child: ListView.separated(
+                          scrollDirection: Axis.horizontal,
+                          padding: const EdgeInsets.symmetric(horizontal: 4),
+                          itemCount: layer.length,
+                          separatorBuilder: (context, index) => const SizedBox(width: 12),
+                          itemBuilder: (context, i) {
+                            return Center(
+                              child: _buildEvolutionNode(layer[i], pokemon, width: 150),
+                            );
+                          },
                         ),
-                      );
-                    },
-                    borderRadius: BorderRadius.circular(16),
-                    child: Container(
-                      width: double.infinity,
-                      decoration: BoxDecoration(
-                        gradient: isCurrentPokemon
-                            ? LinearGradient(
-                                colors: [
-                                  _getTypeColor(pokemon.types.first).withOpacity(0.2),
-                                  _getTypeColor(pokemon.types.first).withOpacity(0.1),
-                                ],
-                              )
-                            : null,
-                        border: Border.all(
-                          color: isCurrentPokemon
-                              ? _getTypeColor(pokemon.types.first)
-                              : Colors.grey[300]!,
-                          width: isCurrentPokemon ? 3 : 1,
+                      ),
+                      if (layer.length > 2)
+                        const Padding(
+                          padding: EdgeInsets.only(top: 4),
+                          child: Icon(Icons.more_horiz, color: Colors.grey, size: 20),
                         ),
-                        borderRadius: BorderRadius.circular(16),
-                      ),
-                      child: Padding(
-                        padding: const EdgeInsets.all(20),
-                        child: Column(
-                        children: [
-                          // Pokemon sprite
-                          Stack(
-                            alignment: Alignment.center,
-                            children: [
-                              Container(
-                                width: 120,
-                                height: 120,
-                                decoration: BoxDecoration(
-                                  color: Colors.grey[100],
-                                  shape: BoxShape.circle,
-                                  border: Border.all(
-                                    color: isCurrentPokemon
-                                        ? _getTypeColor(pokemon.types.first)
-                                        : Colors.grey[300]!,
-                                    width: isCurrentPokemon ? 3 : 2,
-                                  ),
-                                  boxShadow: isCurrentPokemon ? [
-                                    BoxShadow(
-                                      color: _getTypeColor(pokemon.types.first).withOpacity(0.3),
-                                      blurRadius: 12,
-                                      spreadRadius: 2,
-                                    ),
-                                  ] : null,
-                                ),
-                                child: ClipOval(
-                                  child: Image.network(
-                                    'https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/${stage.id}.png',
-                                    width: 96,
-                                    height: 96,
-                                    fit: BoxFit.contain,
-                                    errorBuilder: (context, error, stackTrace) {
-                                      return Icon(
-                                        Icons.catching_pokemon,
-                                        size: 50,
-                                        color: Colors.grey[400],
-                                      );
-                                    },
-                                  ),
-                                ),
-                              ),
-                              if (isCurrentPokemon)
-                                Positioned(
-                                  bottom: 0,
-                                  child: Container(
-                                    padding: const EdgeInsets.symmetric(
-                                      horizontal: 12,
-                                      vertical: 4,
-                                    ),
-                                    decoration: BoxDecoration(
-                                      color: _getTypeColor(pokemon.types.first),
-                                      borderRadius: BorderRadius.circular(12),
-                                      boxShadow: [
-                                        BoxShadow(
-                                          color: Colors.black.withOpacity(0.2),
-                                          blurRadius: 4,
-                                          offset: const Offset(0, 2),
-                                        ),
-                                      ],
-                                    ),
-                                    child: const Text(
-                                      'Current',
-                                      style: TextStyle(
-                                        color: Colors.white,
-                                        fontSize: 10,
-                                        fontWeight: FontWeight.bold,
-                                        letterSpacing: 1,
-                                      ),
-                                    ),
-                                  ),
-                                ),
-                            ],
-                          ),
-                          const SizedBox(height: 12),
-                          Text(
-                            stage.name,
-                            style: TextStyle(
-                              fontSize: 20,
-                              fontWeight: FontWeight.bold,
-                              color: isCurrentPokemon
-                                  ? _getTypeColor(pokemon.types.first)
-                                  : Colors.black,
-                            ),
-                          ),
-                          const SizedBox(height: 2),
-                          Text(
-                            'Stage ${index + 1}',
-                            style: TextStyle(
-                              fontSize: 12,
-                              color: Colors.grey[600],
-                            ),
-                          ),
-                          // Show previous evolution info
-                          if (stage.evolvesFromId != null) ...[
-                            const SizedBox(height: 4),
-                            Builder(
-                              builder: (context) {
-                                // Find the Pokemon this one evolved from
-                                final evolvedFrom = pokemon.evolutionChain.firstWhere(
-                                  (e) => e.id == stage.evolvesFromId,
-                                  orElse: () => pokemon.evolutionChain[index > 0 ? index - 1 : 0],
-                                );
-                                return Text(
-                                  'From: ${evolvedFrom.name}',
-                                  style: TextStyle(
-                                    fontSize: 11,
-                                    color: Colors.grey[500],
-                                    fontStyle: FontStyle.italic,
-                                  ),
-                                );
-                              },
-                            ),
-                          ],
-                        ],
-                      ),
-                    ),
+                    ],
                   ),
-                  ),
-                  
-                  // Evolution arrow and trigger
-                  if (!isLast) ...[
-                    const SizedBox(height: 8),
-                    // Vertical connecting line
-                    Container(
-                      width: 3,
-                      height: 20,
-                      decoration: BoxDecoration(
-                        gradient: LinearGradient(
-                          begin: Alignment.topCenter,
-                          end: Alignment.bottomCenter,
-                          colors: [
-                            Colors.grey[400]!,
-                            Colors.grey[300]!,
-                          ],
-                        ),
-                      ),
-                    ),
-                    // Arrow and trigger
-                    Column(
-                      children: [
-                        Icon(
-                          Icons.arrow_downward_rounded,
-                          color: Colors.grey[600],
-                          size: 32,
-                        ),
-                        if (pokemon.evolutionChain[index + 1].trigger != null) ...[
-                          const SizedBox(height: 8),
-                          Container(
-                            padding: const EdgeInsets.symmetric(
-                              horizontal: 16,
-                              vertical: 8,
-                            ),
-                            decoration: BoxDecoration(
-                              color: Colors.blue[50],
-                              borderRadius: BorderRadius.circular(20),
-                              border: Border.all(
-                                color: Colors.blue[200]!,
-                                width: 2,
-                              ),
-                            ),
-                            child: Row(
-                              mainAxisSize: MainAxisSize.min,
-                              children: [
-                                Icon(
-                                  _getEvolutionIcon(pokemon.evolutionChain[index + 1].trigger!.trigger),
-                                  size: 18,
-                                  color: Colors.blue[700],
-                                ),
-                                const SizedBox(width: 8),
-                                Text(
-                                  pokemon.evolutionChain[index + 1].trigger!.getDisplayText(),
-                                  style: TextStyle(
-                                    fontSize: 14,
-                                    fontWeight: FontWeight.bold,
-                                    color: Colors.blue[900],
-                                  ),
-                                ),
-                              ],
-                            ),
-                          ),
-                        ],
-                      ],
-                    ),
-                    // Vertical connecting line
-                    Container(
-                      width: 3,
-                      height: 20,
-                      decoration: BoxDecoration(
-                        gradient: LinearGradient(
-                          begin: Alignment.topCenter,
-                          end: Alignment.bottomCenter,
-                          colors: [
-                            Colors.grey[300]!,
-                            Colors.grey[400]!,
-                          ],
-                        ),
-                      ),
-                    ),
-                    const SizedBox(height: 8),
-                  ],
-                ],
-              );
-            }).toList(),
-          ),
+              ],
+            );
+          }),
         ],
       ),
+    );
+  }
+
+  Widget _buildEvolutionNode(EvolutionStage stage, Pokemon currentPokemon, {double? width, bool isFullWidth = false}) {
+    final isCurrentPokemon = stage.name.toLowerCase() == currentPokemon.name.toLowerCase();
+    
+    return Column(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        if (stage.trigger != null) ...[
+          _buildTriggerInfo(stage.trigger!),
+          const Icon(Icons.arrow_downward, color: Colors.grey),
+          const SizedBox(height: 8),
+        ],
+        
+        InkWell(
+          onTap: () {
+             if (stage.id != currentPokemon.nationalDex) {
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (context) => PokemonDetailsScreen(
+                      pokemonId: stage.id,
+                      pokemonName: stage.name,
+                    ),
+                  ),
+                );
+             }
+          },
+          borderRadius: BorderRadius.circular(16),
+          child: Container(
+            width: width,
+            constraints: BoxConstraints(
+              minHeight: isFullWidth ? 150 : 0,
+            ),
+            padding: const EdgeInsets.all(12),
+            decoration: BoxDecoration(
+              color: isCurrentPokemon 
+                  ? _getTypeColor(currentPokemon.types.first).withOpacity(0.1)
+                  : Colors.white,
+              borderRadius: BorderRadius.circular(16),
+              border: Border.all(
+                color: isCurrentPokemon 
+                    ? _getTypeColor(currentPokemon.types.first)
+                    : Colors.grey[300]!,
+                width: 2,
+              ),
+              boxShadow: [
+                BoxShadow(
+                  color: Colors.grey.withOpacity(0.1),
+                  blurRadius: 8,
+                  offset: const Offset(0, 4),
+                ),
+              ],
+            ),
+            child: isFullWidth 
+              ? Row(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  crossAxisAlignment: CrossAxisAlignment.center,
+                  children: [
+                    _buildPokemonImage(stage.id, size: 100),
+                    const SizedBox(width: 16),
+                    Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Text(
+                          stage.name.substring(0, 1).toUpperCase() + stage.name.substring(1),
+                          style: TextStyle(
+                            fontWeight: FontWeight.bold,
+                            color: isCurrentPokemon ? Colors.black : Colors.grey[800],
+                            fontSize: 24,
+                            
+                          ),
+                        ),
+                        Text(
+                          '#${stage.id.toString().padLeft(3, '0')}',
+                          style: TextStyle(
+                            color: Colors.grey[500],
+                            fontSize: 14,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ],
+                )
+              : Column(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    _buildPokemonImage(stage.id, size: 60),
+                    const SizedBox(height: 4),
+                    Text(
+                      stage.name.substring(0, 1).toUpperCase() + stage.name.substring(1),
+                      style: TextStyle(
+                        fontWeight: FontWeight.bold,
+                        color: isCurrentPokemon ? Colors.black : Colors.grey[800],
+                        fontSize: 12,
+                      ),
+                      textAlign: TextAlign.center,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                    Text(
+                      '#${stage.id.toString().padLeft(3, '0')}',
+                      style: TextStyle(
+                        color: Colors.grey[500],
+                        fontSize: 10,
+                      ),
+                    ),
+                  ],
+                ),
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildPokemonImage(int id, {required double size}) {
+    return Hero(
+      tag: 'evo_$id',
+      child: Image.network(
+        'https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/other/official-artwork/$id.png',
+        height: size,
+        width: size,
+        errorBuilder: (context, error, stackTrace) {
+          return Icon(Icons.image_not_supported, size: size / 2, color: Colors.grey);
+        },
+      ),
+    );
+  }
+
+  Widget _buildTriggerInfo(EvolutionTrigger trigger) {
+    return Column(
+      children: [
+        Icon(
+          _getEvolutionIcon(trigger.trigger),
+          size: 20,
+          color: Colors.grey[600],
+        ),
+        const SizedBox(height: 2),
+        Text(
+          trigger.getDisplayText(),
+          style: TextStyle(
+            fontSize: 10,
+            color: Colors.grey[600],
+            fontWeight: FontWeight.w500,
+          ),
+          textAlign: TextAlign.center,
+        ),
+        const SizedBox(height: 4),
+      ],
     );
   }
 
