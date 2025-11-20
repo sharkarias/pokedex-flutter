@@ -106,9 +106,15 @@ class PokemonQueries {
       query GetTypeDamageRelations {
         type(where: {name: {_eq: "$typeName"}}) {
           name
-          typeefficaciesbytargettypeid {
+          typeefficacies {
             damage_factor
-            type {
+            TypeByTargetTypeId {
+              name
+            }
+          }
+          TypeefficaciesByTargetTypeId {
+            damage_factor
+            TypeByTargetTypeId {
               name
             }
           }

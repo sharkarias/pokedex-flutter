@@ -1043,6 +1043,7 @@ class _PokemonDetailsScreenState extends State<PokemonDetailsScreen>
   }
 
   Widget _buildMatchupsTab(Pokemon pokemon) {
+    // Defensive matchups (damage taken)
     final weaknesses = <String, double>{};
     final resistances = <String, double>{};
     final immunities = <String>[];
@@ -1057,75 +1058,126 @@ class _PokemonDetailsScreenState extends State<PokemonDetailsScreen>
       }
     });
 
+    // Offensive matchups (damage dealt)
+    final superEffective = <String, double>{};
+    final notVeryEffective = <String, double>{};
+    final noEffect = <String>[];
+
+    pokemon.offensiveDamageRelations.forEach((type, multiplier) {
+      if (multiplier == 0) {
+        noEffect.add(type);
+      } else if (multiplier > 1.0) {
+        superEffective[type] = multiplier;
+      } else if (multiplier < 1.0) {
+        notVeryEffective[type] = multiplier;
+      }
+    });
+
     return ListView(
       padding: const EdgeInsets.all(16),
       children: [
+        // Defensive Section
+        const Text(
+          'Defensive',
+          style: TextStyle(
+            fontSize: 24,
+            fontWeight: FontWeight.bold,
+            color: Colors.deepPurple,
+          ),
+        ),
+        const SizedBox(height: 8),
+        Text(
+          'Damage taken from other types',
+          style: TextStyle(fontSize: 14, color: Colors.grey[600]),
+        ),
+        const SizedBox(height: 16),
+        
         if (weaknesses.isNotEmpty) ...[
           const Text(
-            'Weaknesses',
+            'Weak To',
             style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
           ),
           const SizedBox(height: 12),
-          Wrap(
-            spacing: 8,
-            runSpacing: 8,
-            children: weaknesses.entries.map((entry) {
-              return _buildTypeChip(
-                entry.key,
-                'x${entry.value}',
-                Colors.red[100]!,
-                Colors.red[800]!,
-              );
-            }).toList(),
-          ),
+          _buildMatchupGrid(weaknesses.entries.toList(), 'weakness'),
           const SizedBox(height: 24),
         ],
         if (resistances.isNotEmpty) ...[
           const Text(
-            'Resistances',
+            'Resists',
             style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
           ),
           const SizedBox(height: 12),
-          Wrap(
-            spacing: 8,
-            runSpacing: 8,
-            children: resistances.entries.map((entry) {
-              return _buildTypeChip(
-                entry.key,
-                'x${entry.value}',
-                Colors.green[100]!,
-                Colors.green[800]!,
-              );
-            }).toList(),
-          ),
+          _buildMatchupGrid(resistances.entries.toList(), 'resistance'),
           const SizedBox(height: 24),
         ],
         if (immunities.isNotEmpty) ...[
           const Text(
-            'Immunities',
+            'Immune To',
             style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
           ),
           const SizedBox(height: 12),
-          Wrap(
-            spacing: 8,
-            runSpacing: 8,
-            children: immunities.map((type) {
-              return _buildTypeChip(
-                type,
-                'x0',
-                Colors.grey[300]!,
-                Colors.grey[800]!,
-              );
-            }).toList(),
+          _buildMatchupGrid(
+            immunities.map((type) => MapEntry(type, 0.0)).toList(),
+            'immunity',
+          ),
+          const SizedBox(height: 32),
+        ],
+
+        // Offensive Section
+        const Divider(thickness: 2, height: 48),
+        const Text(
+          'Offensive',
+          style: TextStyle(
+            fontSize: 24,
+            fontWeight: FontWeight.bold,
+            color: Colors.deepOrange,
+          ),
+        ),
+        const SizedBox(height: 8),
+        Text(
+          'Damage dealt to other types',
+          style: TextStyle(fontSize: 14, color: Colors.grey[600]),
+        ),
+        const SizedBox(height: 16),
+        
+        if (superEffective.isNotEmpty) ...[
+          const Text(
+            'Super Effective Against',
+            style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
+          ),
+          const SizedBox(height: 12),
+          _buildMatchupGrid(superEffective.entries.toList(), 'super-effective'),
+          const SizedBox(height: 24),
+        ],
+        if (notVeryEffective.isNotEmpty) ...[
+          const Text(
+            'Not Very Effective Against',
+            style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
+          ),
+          const SizedBox(height: 12),
+          _buildMatchupGrid(notVeryEffective.entries.toList(), 'not-effective'),
+          const SizedBox(height: 24),
+        ],
+        if (noEffect.isNotEmpty) ...[
+          const Text(
+            'No Effect Against',
+            style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
+          ),
+          const SizedBox(height: 12),
+          _buildMatchupGrid(
+            noEffect.map((type) => MapEntry(type, 0.0)).toList(),
+            'no-effect',
           ),
         ],
-        if (weaknesses.isEmpty && resistances.isEmpty && immunities.isEmpty)
+        
+        if (weaknesses.isEmpty && resistances.isEmpty && immunities.isEmpty &&
+            superEffective.isEmpty && notVeryEffective.isEmpty && noEffect.isEmpty)
           const Center(
             child: Padding(
               padding: EdgeInsets.all(32),
               child: Text(
                 'No special type matchups',
-                style: TextStyle(color: Colors.grey),
+                style: TextStyle(color: Colors.grey, fontSize: 16),
               ),
             ),
           ),
@@ -1133,40 +1185,116 @@ class _PokemonDetailsScreenState extends State<PokemonDetailsScreen>
     );
   }
 
-  Widget _buildTypeChip(
-      String type, String multiplier, Color bgColor, Color textColor) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
-      decoration: BoxDecoration(
-        color: bgColor,
-        borderRadius: BorderRadius.circular(20),
-        border: Border.all(color: textColor.withOpacity(0.3)),
+  Widget _buildMatchupGrid(List<MapEntry<String, double>> matchups, String category) {
+    return GridView.builder(
+      shrinkWrap: true,
+      physics: const NeverScrollableScrollPhysics(),
+      gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+        crossAxisCount: 2,
+        childAspectRatio: 1.5,
+        crossAxisSpacing: 12,
+        mainAxisSpacing: 12,
       ),
-      child: Row(
-        mainAxisSize: MainAxisSize.min,
+      itemCount: matchups.length,
+      itemBuilder: (context, index) {
+        final entry = matchups[index];
+        return _buildMatchupCard(entry.key, entry.value, category);
+      },
+    );
+  }
+
+  Widget _buildMatchupCard(String type, double multiplier, String category) {
+    Color backgroundColor;
+    Color accentColor;
+    
+    switch (category) {
+      case 'weakness':
+        backgroundColor = Colors.red[50]!;
+        accentColor = Colors.red[600]!;
+        break;
+      case 'resistance':
+        backgroundColor = Colors.green[50]!;
+        accentColor = Colors.green[600]!;
+        break;
+      case 'immunity':
+        backgroundColor = Colors.grey[100]!;
+        accentColor = Colors.grey[600]!;
+        break;
+      case 'super-effective':
+        backgroundColor = Colors.blue[50]!;
+        accentColor = Colors.blue[600]!;
+        break;
+      case 'not-effective':
+        backgroundColor = Colors.orange[50]!;
+        accentColor = Colors.orange[700]!;
+        break;
+      case 'no-effect':
+        backgroundColor = Colors.blueGrey[50]!;
+        accentColor = Colors.blueGrey[600]!;
+        break;
+      default:
+        backgroundColor = Colors.grey[200]!;
+        accentColor = Colors.grey;
+    }
+
+    final multiplierText = multiplier == 0 ? 'x0' : 'x${multiplier.toStringAsFixed(multiplier.truncateToDouble() == multiplier ? 0 : 1)}';
+
+    return Container(
+      decoration: BoxDecoration(
+        color: backgroundColor,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: accentColor.withOpacity(0.3), width: 2),
+        boxShadow: [
+          BoxShadow(
+            color: accentColor.withOpacity(0.1),
+            blurRadius: 8,
+            offset: const Offset(0, 4),
+          ),
+        ],
+      ),
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
         children: [
+          // Multiplier display
           Container(
-            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+            padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 8),
             decoration: BoxDecoration(
-              color: _getTypeColor(type),
-              borderRadius: BorderRadius.circular(8),
+              color: accentColor,
+              borderRadius: BorderRadius.circular(20),
             ),
             child: Text(
-              type,
+              multiplierText,
               style: const TextStyle(
                 color: Colors.white,
-                fontSize: 12,
+                fontSize: 28,
                 fontWeight: FontWeight.bold,
+                letterSpacing: 1,
               ),
             ),
           ),
-          const SizedBox(width: 8),
-          Text(
-            multiplier,
-            style: TextStyle(
-              color: textColor,
-              fontSize: 14,
-              fontWeight: FontWeight.bold,
+          const SizedBox(height: 12),
+          // Type badge
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
+            decoration: BoxDecoration(
+              color: _getTypeColor(type),
+              borderRadius: BorderRadius.circular(12),
+              boxShadow: [
+                BoxShadow(
+                  color: _getTypeColor(type).withOpacity(0.4),
+                  blurRadius: 4,
+                  offset: const Offset(0, 2),
+                ),
+              ],
+            ),
+            child: Text(
+              type.toUpperCase(),
+              style: const TextStyle(
+                color: Colors.white,
+                fontSize: 14,
+                fontWeight: FontWeight.bold,
+                letterSpacing: 0.5,
+              ),
             ),
           ),
         ],

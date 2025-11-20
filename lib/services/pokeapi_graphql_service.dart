@@ -145,6 +145,7 @@ class PokeApiGraphQLService {
       captureRate: null,
       color: null,
       damageRelations: {},
+      offensiveDamageRelations: {},
       shinyAvailable: true,
       officialSources: {
         'graphql_endpoint': _endpoint,
@@ -327,8 +328,10 @@ class PokeApiGraphQLService {
       // Continue without evolution data rather than failing completely
     }
 
-    // Calculate damage relations
-    final damageRelations = await _calculateDamageRelations(types);
+    // Calculate damage relations (defensive and offensive)
+    final damageRelationsData = await _calculateDamageRelations(types);
+    final damageRelations = damageRelationsData['defensive']!;
+    final offensiveDamageRelations = damageRelationsData['offensive']!;
 
     // Generate sprite URLs (PokeAPI still hosts these)
     final spriteUrl = 'https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/$id.png';
@@ -359,6 +362,7 @@ class PokeApiGraphQLService {
       captureRate: captureRate,
       color: color,
       damageRelations: damageRelations,
+      offensiveDamageRelations: offensiveDamageRelations,
       shinyAvailable: true,
       officialSources: {
         'graphql_endpoint': _endpoint,
@@ -366,43 +370,62 @@ class PokeApiGraphQLService {
     );
   }
 
-  Future<Map<String, double>> _calculateDamageRelations(List<String> types) async {
-    Map<String, double> damageRelations = {};
+  Future<Map<String, Map<String, double>>> _calculateDamageRelations(List<String> types) async {
+    Map<String, double> defensiveDamageRelations = {};
+    Map<String, double> offensiveDamageRelations = {};
 
     for (var typeName in types) {
       try {
+        final queryString = PokemonQueries.getTypeDamageRelations(typeName.toLowerCase());
+        
         final QueryOptions options = QueryOptions(
-          document: gql(PokemonQueries.getTypeDamageRelations(typeName.toLowerCase())),
+          document: gql(queryString),
         );
 
         final QueryResult result = await _client.query(options);
 
         if (!result.hasException && result.data != null) {
           final typeData = result.data?['type'] as List?;
+          
           if (typeData != null && typeData.isNotEmpty) {
-            final efficacies = typeData[0]['typeefficaciesbytargettypeid'] as List;
-
-            for (var efficacy in efficacies) {
+            // Defensive: How much damage this type RECEIVES from other types
+            final defensiveEfficacies = typeData[0]['typeefficacies'] as List;
+            for (var efficacy in defensiveEfficacies) {
               final damageFactor = efficacy['damage_factor'] as int;
-              final attackingType = _capitalize(efficacy['type']['name'] as String);
-              
-              // damage_factor is in percentage (e.g., 200 = 2x, 50 = 0.5x, 0 = 0x)
+              final attackingType = _capitalize(efficacy['TypeByTargetTypeId']['name'] as String);
               final multiplier = damageFactor / 100.0;
               
               if (multiplier != 1.0) {
-                damageRelations[attackingType] = (damageRelations[attackingType] ?? 1.0) * multiplier;
+                defensiveDamageRelations[attackingType] = (defensiveDamageRelations[attackingType] ?? 1.0) * multiplier;
+              }
+            }
+
+            // Offensive: How much damage this type DEALS to other types
+            final offensiveEfficacies = typeData[0]['TypeefficaciesByTargetTypeId'] as List;
+            for (var efficacy in offensiveEfficacies) {
+              final damageFactor = efficacy['damage_factor'] as int;
+              final defendingType = _capitalize(efficacy['TypeByTargetTypeId']['name'] as String);
+              final multiplier = damageFactor / 100.0;
+              
+              if (multiplier != 1.0) {
+                offensiveDamageRelations[defendingType] = (offensiveDamageRelations[defendingType] ?? 1.0) * multiplier;
               }
             }
           }
         }
-      } catch (e) {
-        print('Error fetching type damage relations: $e');
+      } catch (e, stackTrace) {
+        print('Error fetching type damage relations for $typeName: $e');
+        print('Stack trace: $stackTrace');
       }
     }
 
-    damageRelations.removeWhere((key, value) => value == 1.0);
+    defensiveDamageRelations.removeWhere((key, value) => value == 1.0);
+    offensiveDamageRelations.removeWhere((key, value) => value == 1.0);
 
-    return damageRelations;
+    return {
+      'defensive': defensiveDamageRelations,
+      'offensive': offensiveDamageRelations,
+    };
   }
 
   String _capitalize(String text) {
