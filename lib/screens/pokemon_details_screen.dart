@@ -1076,55 +1076,7 @@ class _PokemonDetailsScreenState extends State<PokemonDetailsScreen>
     return ListView(
       padding: const EdgeInsets.all(16),
       children: [
-        // Defensive Section
-        const Text(
-          'Defensive',
-          style: TextStyle(
-            fontSize: 24,
-            fontWeight: FontWeight.bold,
-            color: Colors.deepPurple,
-          ),
-        ),
-        const SizedBox(height: 8),
-        Text(
-          'Damage taken from other types',
-          style: TextStyle(fontSize: 14, color: Colors.grey[600]),
-        ),
-        const SizedBox(height: 16),
-        
-        if (weaknesses.isNotEmpty) ...[
-          const Text(
-            'Weak To',
-            style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
-          ),
-          const SizedBox(height: 12),
-          _buildMatchupGrid(weaknesses.entries.toList(), 'weakness'),
-          const SizedBox(height: 24),
-        ],
-        if (resistances.isNotEmpty) ...[
-          const Text(
-            'Resists',
-            style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
-          ),
-          const SizedBox(height: 12),
-          _buildMatchupGrid(resistances.entries.toList(), 'resistance'),
-          const SizedBox(height: 24),
-        ],
-        if (immunities.isNotEmpty) ...[
-          const Text(
-            'Immune To',
-            style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
-          ),
-          const SizedBox(height: 12),
-          _buildMatchupGrid(
-            immunities.map((type) => MapEntry(type, 0.0)).toList(),
-            'immunity',
-          ),
-          const SizedBox(height: 32),
-        ],
-
         // Offensive Section
-        const Divider(thickness: 2, height: 48),
         const Text(
           'Offensive',
           style: TextStyle(
@@ -1167,6 +1119,54 @@ class _PokemonDetailsScreenState extends State<PokemonDetailsScreen>
           _buildMatchupGrid(
             noEffect.map((type) => MapEntry(type, 0.0)).toList(),
             'no-effect',
+          ),
+          const SizedBox(height: 32),
+        ],
+
+        // Defensive Section
+        const Divider(thickness: 2, height: 48),
+        const Text(
+          'Defensive',
+          style: TextStyle(
+            fontSize: 24,
+            fontWeight: FontWeight.bold,
+            color: Colors.deepPurple,
+          ),
+        ),
+        const SizedBox(height: 8),
+        Text(
+          'Damage taken from other types',
+          style: TextStyle(fontSize: 14, color: Colors.grey[600]),
+        ),
+        const SizedBox(height: 16),
+        
+        if (weaknesses.isNotEmpty) ...[
+          const Text(
+            'Weak To',
+            style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
+          ),
+          const SizedBox(height: 12),
+          _buildMatchupGrid(weaknesses.entries.toList(), 'weakness'),
+          const SizedBox(height: 24),
+        ],
+        if (resistances.isNotEmpty) ...[
+          const Text(
+            'Resists',
+            style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
+          ),
+          const SizedBox(height: 12),
+          _buildMatchupGrid(resistances.entries.toList(), 'resistance'),
+          const SizedBox(height: 24),
+        ],
+        if (immunities.isNotEmpty) ...[
+          const Text(
+            'Immune To',
+            style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
+          ),
+          const SizedBox(height: 12),
+          _buildMatchupGrid(
+            immunities.map((type) => MapEntry(type, 0.0)).toList(),
+            'immunity',
           ),
         ],
         
@@ -1242,58 +1242,63 @@ class _PokemonDetailsScreenState extends State<PokemonDetailsScreen>
     return Container(
       decoration: BoxDecoration(
         color: backgroundColor,
-        borderRadius: BorderRadius.circular(16),
+        borderRadius: BorderRadius.circular(12),
         border: Border.all(color: accentColor.withOpacity(0.3), width: 2),
         boxShadow: [
           BoxShadow(
             color: accentColor.withOpacity(0.1),
-            blurRadius: 8,
-            offset: const Offset(0, 4),
+            blurRadius: 6,
+            offset: const Offset(0, 3),
           ),
         ],
       ),
-      child: Column(
+    
+      child: Row(
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
           // Multiplier display
           Container(
-            padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 8),
+            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
             decoration: BoxDecoration(
               color: accentColor,
-              borderRadius: BorderRadius.circular(20),
+              borderRadius: BorderRadius.circular(8),
             ),
             child: Text(
               multiplierText,
               style: const TextStyle(
                 color: Colors.white,
-                fontSize: 28,
+                fontSize: 20,
                 fontWeight: FontWeight.bold,
-                letterSpacing: 1,
+                letterSpacing: 0.5,
               ),
             ),
           ),
-          const SizedBox(height: 12),
+          const SizedBox(width: 8),
+
           // Type badge
-          Container(
-            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
-            decoration: BoxDecoration(
-              color: _getTypeColor(type),
-              borderRadius: BorderRadius.circular(12),
-              boxShadow: [
-                BoxShadow(
-                  color: _getTypeColor(type).withOpacity(0.4),
-                  blurRadius: 4,
-                  offset: const Offset(0, 2),
+          Flexible(
+            child: Container(
+              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+              decoration: BoxDecoration(
+                color: _getTypeColor(type),
+                borderRadius: BorderRadius.circular(8),
+                boxShadow: [
+                  BoxShadow(
+                    color: _getTypeColor(type).withOpacity(0.3),
+                    blurRadius: 3,
+                    offset: const Offset(0, 2),
+                  ),
+                ],
+              ),
+              child: Text(
+                type.toUpperCase(),
+                style: const TextStyle(
+                  color: Colors.white,
+                  fontSize: 20,
+                  fontWeight: FontWeight.bold,
+                  letterSpacing: 0.5,
                 ),
-              ],
-            ),
-            child: Text(
-              type.toUpperCase(),
-              style: const TextStyle(
-                color: Colors.white,
-                fontSize: 14,
-                fontWeight: FontWeight.bold,
-                letterSpacing: 0.5,
+                overflow: TextOverflow.ellipsis,
               ),
             ),
           ),
