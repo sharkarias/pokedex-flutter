@@ -1090,37 +1090,37 @@ class _PokemonDetailsScreenState extends State<PokemonDetailsScreen>
           'Damage dealt to other types',
           style: TextStyle(fontSize: 14, color: Colors.grey[600]),
         ),
-        const SizedBox(height: 16),
+        const SizedBox(height: 5),
         
         if (superEffective.isNotEmpty) ...[
           const Text(
             'Super Effective Against',
             style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
           ),
-          const SizedBox(height: 12),
+          const SizedBox(height: 5),
           _buildMatchupGrid(superEffective.entries.toList(), 'super-effective'),
-          const SizedBox(height: 24),
+          const SizedBox(height: 5),
         ],
         if (notVeryEffective.isNotEmpty) ...[
           const Text(
             'Not Very Effective Against',
             style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
           ),
-          const SizedBox(height: 12),
+          const SizedBox(height: 5),
           _buildMatchupGrid(notVeryEffective.entries.toList(), 'not-effective'),
-          const SizedBox(height: 24),
+          const SizedBox(height: 5),
         ],
         if (noEffect.isNotEmpty) ...[
           const Text(
             'No Effect Against',
             style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
           ),
-          const SizedBox(height: 12),
+          const SizedBox(height: 5),
           _buildMatchupGrid(
             noEffect.map((type) => MapEntry(type, 0.0)).toList(),
             'no-effect',
           ),
-          const SizedBox(height: 32),
+          const SizedBox(height: 10),
         ],
 
         // Defensive Section
@@ -1138,32 +1138,32 @@ class _PokemonDetailsScreenState extends State<PokemonDetailsScreen>
           'Damage taken from other types',
           style: TextStyle(fontSize: 14, color: Colors.grey[600]),
         ),
-        const SizedBox(height: 16),
+        const SizedBox(height: 5),
         
         if (weaknesses.isNotEmpty) ...[
           const Text(
             'Weak To',
             style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
           ),
-          const SizedBox(height: 12),
+          const SizedBox(height: 5),
           _buildMatchupGrid(weaknesses.entries.toList(), 'weakness'),
-          const SizedBox(height: 24),
+          const SizedBox(height: 5),
         ],
         if (resistances.isNotEmpty) ...[
           const Text(
             'Resists',
             style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
           ),
-          const SizedBox(height: 12),
+          //const SizedBox(height: 5),
           _buildMatchupGrid(resistances.entries.toList(), 'resistance'),
-          const SizedBox(height: 24),
+          const SizedBox(height: 5),
         ],
         if (immunities.isNotEmpty) ...[
           const Text(
             'Immune To',
             style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
           ),
-          const SizedBox(height: 12),
+          const SizedBox(height: 5),
           _buildMatchupGrid(
             immunities.map((type) => MapEntry(type, 0.0)).toList(),
             'immunity',
@@ -1191,9 +1191,9 @@ class _PokemonDetailsScreenState extends State<PokemonDetailsScreen>
       physics: const NeverScrollableScrollPhysics(),
       gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
         crossAxisCount: 2,
-        childAspectRatio: 1.5,
+        childAspectRatio: 3,
         crossAxisSpacing: 12,
-        mainAxisSpacing: 12,
+        mainAxisSpacing: 8,
       ),
       itemCount: matchups.length,
       itemBuilder: (context, index) {
@@ -1239,70 +1239,67 @@ class _PokemonDetailsScreenState extends State<PokemonDetailsScreen>
 
     final multiplierText = multiplier == 0 ? 'x0' : 'x${multiplier.toStringAsFixed(multiplier.truncateToDouble() == multiplier ? 0 : 1)}';
 
-    return Container(
-      decoration: BoxDecoration(
-        color: backgroundColor,
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: accentColor.withOpacity(0.3), width: 2),
-        boxShadow: [
-          BoxShadow(
-            color: accentColor.withOpacity(0.1),
-            blurRadius: 6,
-            offset: const Offset(0, 3),
-          ),
-        ],
-      ),
-    
-      child: Row(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          // Multiplier display
-          Container(
-            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-            decoration: BoxDecoration(
-              color: accentColor,
-              borderRadius: BorderRadius.circular(8),
+    return Center(
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+        decoration: BoxDecoration(
+          color: backgroundColor,
+          borderRadius: BorderRadius.circular(10),
+          border: Border.all(color: accentColor.withOpacity(0.3), width: 1.5),
+          boxShadow: [
+            BoxShadow(
+              color: accentColor.withOpacity(0.08),
+              blurRadius: 4,
+              offset: const Offset(0, 2),
             ),
-            child: Text(
-              multiplierText,
-              style: const TextStyle(
-                color: Colors.white,
-                fontSize: 20,
-                fontWeight: FontWeight.bold,
-                letterSpacing: 0.5,
-              ),
-            ),
-          ),
-          const SizedBox(width: 8),
-
-          // Type badge
-          Flexible(
-            child: Container(
-              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+          ],
+        ),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
               decoration: BoxDecoration(
-                color: _getTypeColor(type),
-                borderRadius: BorderRadius.circular(8),
-                boxShadow: [
-                  BoxShadow(
-                    color: _getTypeColor(type).withOpacity(0.3),
-                    blurRadius: 3,
-                    offset: const Offset(0, 2),
-                  ),
-                ],
+                color: accentColor,
+                borderRadius: BorderRadius.circular(6),
               ),
               child: Text(
-                type.toUpperCase(),
+                multiplierText,
                 style: const TextStyle(
                   color: Colors.white,
-                  fontSize: 20,
+                  fontSize: 16,
                   fontWeight: FontWeight.bold,
-                  letterSpacing: 0.5,
                 ),
-                overflow: TextOverflow.ellipsis,
               ),
             ),
-          ),
-        ],
+            const SizedBox(width: 10),
+            Flexible(
+              child: Container(
+                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                decoration: BoxDecoration(
+                  color: _getTypeColor(type),
+                  borderRadius: BorderRadius.circular(6),
+                  boxShadow: [
+                    BoxShadow(
+                      color: _getTypeColor(type).withOpacity(0.2),
+                      blurRadius: 3,
+                      offset: const Offset(0, 1),
+                    ),
+                  ],
+                ),
+                child: Text(
+                  type.toUpperCase(),
+                  style: const TextStyle(
+                    color: Colors.white,
+                    fontSize: 16,
+                    fontWeight: FontWeight.bold,
+                  ),
+                  overflow: TextOverflow.ellipsis,
+                ),
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }
