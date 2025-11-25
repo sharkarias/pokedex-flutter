@@ -677,6 +677,48 @@ class _PokemonDetailsScreenState extends State<PokemonDetailsScreen>
       );
     }
 
+    // Build the tree structure
+    final Map<int, List<EvolutionStage>> evolutionsMap = {};
+    EvolutionStage? root;
+
+    for (var stage in pokemon.evolutionChain) {
+      if (stage.evolvesFromId == null) {
+        root = stage;
+      } else {
+        evolutionsMap.putIfAbsent(stage.evolvesFromId!, () => []).add(stage);
+      }
+    }
+    
+    // Fallback if no root found
+    if (root == null && pokemon.evolutionChain.isNotEmpty) {
+       final allIds = pokemon.evolutionChain.map((e) => e.id).toSet();
+       final childrenIds = pokemon.evolutionChain.map((e) => e.evolvesFromId).whereType<int>().toSet();
+       final potentialRoots = allIds.difference(childrenIds);
+       
+       if (potentialRoots.isNotEmpty) {
+         root = pokemon.evolutionChain.firstWhere((e) => e.id == potentialRoots.first);
+       } else {
+         root = pokemon.evolutionChain.first;
+       }
+    }
+
+    if (root == null) return const SizedBox();
+
+    // Build layers
+    List<List<EvolutionStage>> layers = [];
+    List<EvolutionStage> currentLayer = [root];
+    
+    while (currentLayer.isNotEmpty) {
+      layers.add(currentLayer);
+      List<EvolutionStage> nextLayer = [];
+      for (var stage in currentLayer) {
+        if (evolutionsMap.containsKey(stage.id)) {
+          nextLayer.addAll(evolutionsMap[stage.id]!);
+        }
+      }
+      currentLayer = nextLayer;
+    }
+
     return SingleChildScrollView(
       padding: const EdgeInsets.all(16),
       child: Column(
@@ -685,250 +727,198 @@ class _PokemonDetailsScreenState extends State<PokemonDetailsScreen>
             'Evolution Chain',
             style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
           ),
-          const SizedBox(height: 30),
-          Column(
-            children: pokemon.evolutionChain.asMap().entries.map((entry) {
-              final index = entry.key;
-              final stage = entry.value;
-              final isLast = index == pokemon.evolutionChain.length - 1;
-              final isCurrentPokemon = stage.name.toLowerCase() == pokemon.name.toLowerCase();
-
-              return Column(
-                children: [
-                  // Evolution stage node - clickable
-                  InkWell(
-                    onTap: () {
-                      // Navigate to this Pokemon's details
-                      Navigator.pushReplacement(
-                        context,
-                        MaterialPageRoute(
-                          builder: (context) => PokemonDetailsScreen(
-                            pokemonId: stage.id,
-                            pokemonName: stage.name,
-                          ),
+          const SizedBox(height: 20),
+          ...List.generate(layers.length, (index) {
+            final layer = layers[index];
+            final isSingle = layer.length == 1;
+            
+            return Column(
+              children: [
+                if (index > 0) const SizedBox(height: 10),
+                if (isSingle)
+                  _buildEvolutionNode(layer.first, pokemon, isFullWidth: true)
+                else
+                  Column(
+                    children: [
+                      SizedBox(
+                        height: 200,
+                        child: ListView.separated(
+                          scrollDirection: Axis.horizontal,
+                          padding: const EdgeInsets.symmetric(horizontal: 4),
+                          itemCount: layer.length,
+                          separatorBuilder: (context, index) => const SizedBox(width: 12),
+                          itemBuilder: (context, i) {
+                            return Center(
+                              child: _buildEvolutionNode(layer[i], pokemon, width: 150),
+                            );
+                          },
                         ),
-                      );
-                    },
-                    borderRadius: BorderRadius.circular(16),
-                    child: Container(
-                      width: double.infinity,
-                      decoration: BoxDecoration(
-                        gradient: isCurrentPokemon
-                            ? LinearGradient(
-                                colors: [
-                                  _getTypeColor(pokemon.types.first).withOpacity(0.2),
-                                  _getTypeColor(pokemon.types.first).withOpacity(0.1),
-                                ],
-                              )
-                            : null,
-                        border: Border.all(
-                          color: isCurrentPokemon
-                              ? _getTypeColor(pokemon.types.first)
-                              : Colors.grey[300]!,
-                          width: isCurrentPokemon ? 3 : 1,
+                      ),
+                      if (layer.length > 2)
+                        const Padding(
+                          padding: EdgeInsets.only(top: 4),
+                          child: Icon(Icons.more_horiz, color: Colors.grey, size: 20),
                         ),
-                        borderRadius: BorderRadius.circular(16),
-                      ),
-                      child: Padding(
-                        padding: const EdgeInsets.all(20),
-                        child: Column(
-                        children: [
-                          // Pokemon sprite
-                          Stack(
-                            alignment: Alignment.center,
-                            children: [
-                              Container(
-                                width: 120,
-                                height: 120,
-                                decoration: BoxDecoration(
-                                  color: Colors.grey[100],
-                                  shape: BoxShape.circle,
-                                  border: Border.all(
-                                    color: isCurrentPokemon
-                                        ? _getTypeColor(pokemon.types.first)
-                                        : Colors.grey[300]!,
-                                    width: isCurrentPokemon ? 3 : 2,
-                                  ),
-                                  boxShadow: isCurrentPokemon ? [
-                                    BoxShadow(
-                                      color: _getTypeColor(pokemon.types.first).withOpacity(0.3),
-                                      blurRadius: 12,
-                                      spreadRadius: 2,
-                                    ),
-                                  ] : null,
-                                ),
-                                child: ClipOval(
-                                  child: Image.network(
-                                    'https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/${stage.id}.png',
-                                    width: 96,
-                                    height: 96,
-                                    fit: BoxFit.contain,
-                                    errorBuilder: (context, error, stackTrace) {
-                                      return Icon(
-                                        Icons.catching_pokemon,
-                                        size: 50,
-                                        color: Colors.grey[400],
-                                      );
-                                    },
-                                  ),
-                                ),
-                              ),
-                              if (isCurrentPokemon)
-                                Positioned(
-                                  bottom: 0,
-                                  child: Container(
-                                    padding: const EdgeInsets.symmetric(
-                                      horizontal: 12,
-                                      vertical: 4,
-                                    ),
-                                    decoration: BoxDecoration(
-                                      color: _getTypeColor(pokemon.types.first),
-                                      borderRadius: BorderRadius.circular(12),
-                                      boxShadow: [
-                                        BoxShadow(
-                                          color: Colors.black.withOpacity(0.2),
-                                          blurRadius: 4,
-                                          offset: const Offset(0, 2),
-                                        ),
-                                      ],
-                                    ),
-                                    child: const Text(
-                                      'Current',
-                                      style: TextStyle(
-                                        color: Colors.white,
-                                        fontSize: 10,
-                                        fontWeight: FontWeight.bold,
-                                        letterSpacing: 1,
-                                      ),
-                                    ),
-                                  ),
-                                ),
-                            ],
-                          ),
-                          const SizedBox(height: 12),
-                          Text(
-                            stage.name,
-                            style: TextStyle(
-                              fontSize: 20,
-                              fontWeight: FontWeight.bold,
-                              color: isCurrentPokemon
-                                  ? _getTypeColor(pokemon.types.first)
-                                  : Colors.black,
-                            ),
-                          ),
-                          const SizedBox(height: 2),
-                          Text(
-                            'Stage ${index + 1}',
-                            style: TextStyle(
-                              fontSize: 12,
-                              color: Colors.grey[600],
-                            ),
-                          ),
-                          // Show previous evolution info
-                          if (index > 0) ...[
-                            const SizedBox(height: 4),
-                            Text(
-                              'From: ${pokemon.evolutionChain[index - 1].name}',
-                              style: TextStyle(
-                                fontSize: 11,
-                                color: Colors.grey[500],
-                                fontStyle: FontStyle.italic,
-                              ),
-                            ),
-                          ],
-                        ],
-                      ),
-                    ),
+                    ],
                   ),
-                  ),
-                  
-                  // Evolution arrow and trigger
-                  if (!isLast) ...[
-                    const SizedBox(height: 8),
-                    // Vertical connecting line
-                    Container(
-                      width: 3,
-                      height: 20,
-                      decoration: BoxDecoration(
-                        gradient: LinearGradient(
-                          begin: Alignment.topCenter,
-                          end: Alignment.bottomCenter,
-                          colors: [
-                            Colors.grey[400]!,
-                            Colors.grey[300]!,
-                          ],
-                        ),
-                      ),
-                    ),
-                    // Arrow and trigger
-                    Column(
-                      children: [
-                        Icon(
-                          Icons.arrow_downward_rounded,
-                          color: Colors.grey[600],
-                          size: 32,
-                        ),
-                        if (pokemon.evolutionChain[index + 1].trigger != null) ...[
-                          const SizedBox(height: 8),
-                          Container(
-                            padding: const EdgeInsets.symmetric(
-                              horizontal: 16,
-                              vertical: 8,
-                            ),
-                            decoration: BoxDecoration(
-                              color: Colors.blue[50],
-                              borderRadius: BorderRadius.circular(20),
-                              border: Border.all(
-                                color: Colors.blue[200]!,
-                                width: 2,
-                              ),
-                            ),
-                            child: Row(
-                              mainAxisSize: MainAxisSize.min,
-                              children: [
-                                Icon(
-                                  _getEvolutionIcon(pokemon.evolutionChain[index + 1].trigger!.trigger),
-                                  size: 18,
-                                  color: Colors.blue[700],
-                                ),
-                                const SizedBox(width: 8),
-                                Text(
-                                  pokemon.evolutionChain[index + 1].trigger!.getDisplayText(),
-                                  style: TextStyle(
-                                    fontSize: 14,
-                                    fontWeight: FontWeight.bold,
-                                    color: Colors.blue[900],
-                                  ),
-                                ),
-                              ],
-                            ),
-                          ),
-                        ],
-                      ],
-                    ),
-                    // Vertical connecting line
-                    Container(
-                      width: 3,
-                      height: 20,
-                      decoration: BoxDecoration(
-                        gradient: LinearGradient(
-                          begin: Alignment.topCenter,
-                          end: Alignment.bottomCenter,
-                          colors: [
-                            Colors.grey[300]!,
-                            Colors.grey[400]!,
-                          ],
-                        ),
-                      ),
-                    ),
-                    const SizedBox(height: 8),
-                  ],
-                ],
-              );
-            }).toList(),
-          ),
+              ],
+            );
+          }),
         ],
       ),
+    );
+  }
+
+  Widget _buildEvolutionNode(EvolutionStage stage, Pokemon currentPokemon, {double? width, bool isFullWidth = false}) {
+    final isCurrentPokemon = stage.name.toLowerCase() == currentPokemon.name.toLowerCase();
+    
+    return Column(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        if (stage.trigger != null) ...[
+          _buildTriggerInfo(stage.trigger!),
+          const Icon(Icons.arrow_downward, color: Colors.grey),
+          const SizedBox(height: 8),
+        ],
+        
+        InkWell(
+          onTap: () {
+             if (stage.id != currentPokemon.nationalDex) {
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (context) => PokemonDetailsScreen(
+                      pokemonId: stage.id,
+                      pokemonName: stage.name,
+                    ),
+                  ),
+                );
+             }
+          },
+          borderRadius: BorderRadius.circular(16),
+          child: Container(
+            width: width,
+            constraints: BoxConstraints(
+              minHeight: isFullWidth ? 150 : 0,
+            ),
+            padding: const EdgeInsets.all(12),
+            decoration: BoxDecoration(
+              color: isCurrentPokemon 
+                  ? _getTypeColor(currentPokemon.types.first).withOpacity(0.1)
+                  : Colors.white,
+              borderRadius: BorderRadius.circular(16),
+              border: Border.all(
+                color: isCurrentPokemon 
+                    ? _getTypeColor(currentPokemon.types.first)
+                    : Colors.grey[300]!,
+                width: 2,
+              ),
+              boxShadow: [
+                BoxShadow(
+                  color: Colors.grey.withOpacity(0.1),
+                  blurRadius: 8,
+                  offset: const Offset(0, 4),
+                ),
+              ],
+            ),
+            child: isFullWidth 
+              ? Row(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  crossAxisAlignment: CrossAxisAlignment.center,
+                  children: [
+                    _buildPokemonImage(stage.id, size: 100),
+                    const SizedBox(width: 16),
+                    Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Text(
+                          stage.name.substring(0, 1).toUpperCase() + stage.name.substring(1),
+                          style: TextStyle(
+                            fontWeight: FontWeight.bold,
+                            color: isCurrentPokemon ? Colors.black : Colors.grey[800],
+                            fontSize: 24,
+                            
+                          ),
+                        ),
+                        Text(
+                          '#${stage.id.toString().padLeft(3, '0')}',
+                          style: TextStyle(
+                            color: Colors.grey[500],
+                            fontSize: 14,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ],
+                )
+              : Column(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    _buildPokemonImage(stage.id, size: 60),
+                    const SizedBox(height: 4),
+                    Text(
+                      stage.name.substring(0, 1).toUpperCase() + stage.name.substring(1),
+                      style: TextStyle(
+                        fontWeight: FontWeight.bold,
+                        color: isCurrentPokemon ? Colors.black : Colors.grey[800],
+                        fontSize: 12,
+                      ),
+                      textAlign: TextAlign.center,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                    Text(
+                      '#${stage.id.toString().padLeft(3, '0')}',
+                      style: TextStyle(
+                        color: Colors.grey[500],
+                        fontSize: 10,
+                      ),
+                    ),
+                  ],
+                ),
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildPokemonImage(int id, {required double size}) {
+    return Hero(
+      tag: 'evo_$id',
+      child: Image.network(
+        'https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/other/official-artwork/$id.png',
+        height: size,
+        width: size,
+        errorBuilder: (context, error, stackTrace) {
+          return Icon(Icons.image_not_supported, size: size / 2, color: Colors.grey);
+        },
+      ),
+    );
+  }
+
+  Widget _buildTriggerInfo(EvolutionTrigger trigger) {
+    return Column(
+      children: [
+        Icon(
+          _getEvolutionIcon(trigger.trigger),
+          size: 20,
+          color: Colors.grey[600],
+        ),
+        const SizedBox(height: 2),
+        Text(
+          trigger.getDisplayText(),
+          style: TextStyle(
+            fontSize: 10,
+            color: Colors.grey[600],
+            fontWeight: FontWeight.w500,
+          ),
+          textAlign: TextAlign.center,
+        ),
+        const SizedBox(height: 4),
+      ],
     );
   }
 
@@ -1053,6 +1043,7 @@ class _PokemonDetailsScreenState extends State<PokemonDetailsScreen>
   }
 
   Widget _buildMatchupsTab(Pokemon pokemon) {
+    // Defensive matchups (damage taken)
     final weaknesses = <String, double>{};
     final resistances = <String, double>{};
     final immunities = <String>[];
@@ -1067,75 +1058,126 @@ class _PokemonDetailsScreenState extends State<PokemonDetailsScreen>
       }
     });
 
+    // Offensive matchups (damage dealt)
+    final superEffective = <String, double>{};
+    final notVeryEffective = <String, double>{};
+    final noEffect = <String>[];
+
+    pokemon.offensiveDamageRelations.forEach((type, multiplier) {
+      if (multiplier == 0) {
+        noEffect.add(type);
+      } else if (multiplier > 1.0) {
+        superEffective[type] = multiplier;
+      } else if (multiplier < 1.0) {
+        notVeryEffective[type] = multiplier;
+      }
+    });
+
     return ListView(
       padding: const EdgeInsets.all(16),
       children: [
-        if (weaknesses.isNotEmpty) ...[
+        // Offensive Section
+        const Text(
+          'Offensive',
+          style: TextStyle(
+            fontSize: 24,
+            fontWeight: FontWeight.bold,
+            color: Colors.deepOrange,
+          ),
+        ),
+        const SizedBox(height: 8),
+        Text(
+          'Damage dealt to other types',
+          style: TextStyle(fontSize: 14, color: Colors.grey[600]),
+        ),
+        const SizedBox(height: 5),
+        
+        if (superEffective.isNotEmpty) ...[
           const Text(
-            'Weaknesses',
+            'Super Effective Against',
             style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
           ),
-          const SizedBox(height: 12),
-          Wrap(
-            spacing: 8,
-            runSpacing: 8,
-            children: weaknesses.entries.map((entry) {
-              return _buildTypeChip(
-                entry.key,
-                'x${entry.value}',
-                Colors.red[100]!,
-                Colors.red[800]!,
-              );
-            }).toList(),
+          const SizedBox(height: 5),
+          _buildMatchupGrid(superEffective.entries.toList(), 'super-effective'),
+          const SizedBox(height: 5),
+        ],
+        if (notVeryEffective.isNotEmpty) ...[
+          const Text(
+            'Not Very Effective Against',
+            style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
           ),
-          const SizedBox(height: 24),
+          const SizedBox(height: 5),
+          _buildMatchupGrid(notVeryEffective.entries.toList(), 'not-effective'),
+          const SizedBox(height: 5),
+        ],
+        if (noEffect.isNotEmpty) ...[
+          const Text(
+            'No Effect Against',
+            style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
+          ),
+          const SizedBox(height: 5),
+          _buildMatchupGrid(
+            noEffect.map((type) => MapEntry(type, 0.0)).toList(),
+            'no-effect',
+          ),
+          const SizedBox(height: 10),
+        ],
+
+        // Defensive Section
+        const Divider(thickness: 2, height: 48),
+        const Text(
+          'Defensive',
+          style: TextStyle(
+            fontSize: 24,
+            fontWeight: FontWeight.bold,
+            color: Colors.deepPurple,
+          ),
+        ),
+        const SizedBox(height: 8),
+        Text(
+          'Damage taken from other types',
+          style: TextStyle(fontSize: 14, color: Colors.grey[600]),
+        ),
+        const SizedBox(height: 5),
+        
+        if (weaknesses.isNotEmpty) ...[
+          const Text(
+            'Weak To',
+            style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
+          ),
+          const SizedBox(height: 5),
+          _buildMatchupGrid(weaknesses.entries.toList(), 'weakness'),
+          const SizedBox(height: 5),
         ],
         if (resistances.isNotEmpty) ...[
           const Text(
-            'Resistances',
+            'Resists',
             style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
           ),
-          const SizedBox(height: 12),
-          Wrap(
-            spacing: 8,
-            runSpacing: 8,
-            children: resistances.entries.map((entry) {
-              return _buildTypeChip(
-                entry.key,
-                'x${entry.value}',
-                Colors.green[100]!,
-                Colors.green[800]!,
-              );
-            }).toList(),
-          ),
-          const SizedBox(height: 24),
+          //const SizedBox(height: 5),
+          _buildMatchupGrid(resistances.entries.toList(), 'resistance'),
+          const SizedBox(height: 5),
         ],
         if (immunities.isNotEmpty) ...[
           const Text(
-            'Immunities',
+            'Immune To',
             style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
           ),
-          const SizedBox(height: 12),
-          Wrap(
-            spacing: 8,
-            runSpacing: 8,
-            children: immunities.map((type) {
-              return _buildTypeChip(
-                type,
-                'x0',
-                Colors.grey[300]!,
-                Colors.grey[800]!,
-              );
-            }).toList(),
+          const SizedBox(height: 5),
+          _buildMatchupGrid(
+            immunities.map((type) => MapEntry(type, 0.0)).toList(),
+            'immunity',
           ),
         ],
-        if (weaknesses.isEmpty && resistances.isEmpty && immunities.isEmpty)
+        
+        if (weaknesses.isEmpty && resistances.isEmpty && immunities.isEmpty &&
+            superEffective.isEmpty && notVeryEffective.isEmpty && noEffect.isEmpty)
           const Center(
             child: Padding(
               padding: EdgeInsets.all(32),
               child: Text(
                 'No special type matchups',
-                style: TextStyle(color: Colors.grey),
+                style: TextStyle(color: Colors.grey, fontSize: 16),
               ),
             ),
           ),
@@ -1143,43 +1185,121 @@ class _PokemonDetailsScreenState extends State<PokemonDetailsScreen>
     );
   }
 
-  Widget _buildTypeChip(
-      String type, String multiplier, Color bgColor, Color textColor) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
-      decoration: BoxDecoration(
-        color: bgColor,
-        borderRadius: BorderRadius.circular(20),
-        border: Border.all(color: textColor.withOpacity(0.3)),
+  Widget _buildMatchupGrid(List<MapEntry<String, double>> matchups, String category) {
+    return GridView.builder(
+      shrinkWrap: true,
+      physics: const NeverScrollableScrollPhysics(),
+      gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+        crossAxisCount: 2,
+        childAspectRatio: 3,
+        crossAxisSpacing: 12,
+        mainAxisSpacing: 8,
       ),
-      child: Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Container(
-            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-            decoration: BoxDecoration(
-              color: _getTypeColor(type),
-              borderRadius: BorderRadius.circular(8),
+      itemCount: matchups.length,
+      itemBuilder: (context, index) {
+        final entry = matchups[index];
+        return _buildMatchupCard(entry.key, entry.value, category);
+      },
+    );
+  }
+
+  Widget _buildMatchupCard(String type, double multiplier, String category) {
+    Color backgroundColor;
+    Color accentColor;
+    
+    switch (category) {
+      case 'weakness':
+        backgroundColor = Colors.red[50]!;
+        accentColor = Colors.red[600]!;
+        break;
+      case 'resistance':
+        backgroundColor = Colors.green[50]!;
+        accentColor = Colors.green[600]!;
+        break;
+      case 'immunity':
+        backgroundColor = Colors.grey[100]!;
+        accentColor = Colors.grey[600]!;
+        break;
+      case 'super-effective':
+        backgroundColor = Colors.blue[50]!;
+        accentColor = Colors.blue[600]!;
+        break;
+      case 'not-effective':
+        backgroundColor = Colors.orange[50]!;
+        accentColor = Colors.orange[700]!;
+        break;
+      case 'no-effect':
+        backgroundColor = Colors.blueGrey[50]!;
+        accentColor = Colors.blueGrey[600]!;
+        break;
+      default:
+        backgroundColor = Colors.grey[200]!;
+        accentColor = Colors.grey;
+    }
+
+    final multiplierText = multiplier == 0 ? 'x0' : 'x${multiplier.toStringAsFixed(multiplier.truncateToDouble() == multiplier ? 0 : 1)}';
+
+    return Center(
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+        decoration: BoxDecoration(
+          color: backgroundColor,
+          borderRadius: BorderRadius.circular(10),
+          border: Border.all(color: accentColor.withOpacity(0.3), width: 1.5),
+          boxShadow: [
+            BoxShadow(
+              color: accentColor.withOpacity(0.08),
+              blurRadius: 4,
+              offset: const Offset(0, 2),
             ),
-            child: Text(
-              type,
-              style: const TextStyle(
-                color: Colors.white,
-                fontSize: 12,
-                fontWeight: FontWeight.bold,
+          ],
+        ),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+              decoration: BoxDecoration(
+                color: accentColor,
+                borderRadius: BorderRadius.circular(6),
+              ),
+              child: Text(
+                multiplierText,
+                style: const TextStyle(
+                  color: Colors.white,
+                  fontSize: 16,
+                  fontWeight: FontWeight.bold,
+                ),
               ),
             ),
-          ),
-          const SizedBox(width: 8),
-          Text(
-            multiplier,
-            style: TextStyle(
-              color: textColor,
-              fontSize: 14,
-              fontWeight: FontWeight.bold,
+            const SizedBox(width: 10),
+            Flexible(
+              child: Container(
+                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                decoration: BoxDecoration(
+                  color: _getTypeColor(type),
+                  borderRadius: BorderRadius.circular(6),
+                  boxShadow: [
+                    BoxShadow(
+                      color: _getTypeColor(type).withOpacity(0.2),
+                      blurRadius: 3,
+                      offset: const Offset(0, 1),
+                    ),
+                  ],
+                ),
+                child: Text(
+                  type.toUpperCase(),
+                  style: const TextStyle(
+                    color: Colors.white,
+                    fontSize: 16,
+                    fontWeight: FontWeight.bold,
+                  ),
+                  overflow: TextOverflow.ellipsis,
+                ),
+              ),
             ),
-          ),
-        ],
+          ],
+        ),
       ),
     );
   }

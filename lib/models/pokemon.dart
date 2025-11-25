@@ -108,11 +108,13 @@ class EvolutionStage {
   final String name;
   final int id;
   final EvolutionTrigger? trigger;
+  final int? evolvesFromId;
 
   EvolutionStage({
     required this.name,
     required this.id,
     this.trigger,
+    this.evolvesFromId,
   });
 
   factory EvolutionStage.fromJson(Map<String, dynamic> json) {
@@ -122,6 +124,7 @@ class EvolutionStage {
       trigger: json['trigger'] != null 
           ? EvolutionTrigger.fromJson(json['trigger'] as Map<String, dynamic>)
           : null,
+      evolvesFromId: json['evolves_from_id'] as int?,
     );
   }
 }
@@ -204,6 +207,7 @@ class Pokemon {
   final int? captureRate;
   final String? color;
   final Map<String, double> damageRelations;
+  final Map<String, double> offensiveDamageRelations;
   final bool shinyAvailable;
   final Map<String, String> officialSources;
 
@@ -230,6 +234,7 @@ class Pokemon {
     this.captureRate,
     this.color,
     required this.damageRelations,
+    required this.offensiveDamageRelations,
     required this.shinyAvailable,
     required this.officialSources,
   });
@@ -266,6 +271,8 @@ class Pokemon {
       captureRate: json['capture_rate'] as int?,
       color: json['color'] as String?,
       damageRelations: (json['damage_relations'] as Map<String, dynamic>)
+          .map((key, value) => MapEntry(key, (value as num).toDouble())),
+      offensiveDamageRelations: (json['offensive_damage_relations'] as Map<String, dynamic>)
           .map((key, value) => MapEntry(key, (value as num).toDouble())),
       shinyAvailable: json['shiny_available'] as bool,
       officialSources: Map<String, String>.from(json['official_sources']),
