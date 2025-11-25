@@ -182,6 +182,50 @@ for 1 second of inactivity before performing the search*/
     }
   }
 
+
+  void _showOrderDialog() {
+    /*showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Sort Order'),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            ListTile(
+              title: const Text('Ascending (A-Z)'),
+              leading: Radio<String>(
+                value: 'asc',
+                groupValue: _currentOrder,
+                onChanged: (value) {
+                  setState(() {
+                    _currentOrder = value ?? 'asc';
+                  });
+                  Navigator.pop(context);
+                  _loadPokemon();
+                },
+              ),
+            ),
+            ListTile(
+              title: const Text('Descending (Z-A)'),
+              leading: Radio<String>(
+                value: 'desc',
+                groupValue: _currentOrder,
+                onChanged: (value) {
+                  setState(() {
+                    _currentOrder = value ?? 'desc';
+                  });
+                  Navigator.pop(context);
+                  _loadPokemon();
+                },
+              ),
+            ),
+          ],
+        ),
+      ),
+    );*/
+  }
+
+
   void _showFilterDialog() {
     showModalBottomSheet(
       context: context,
@@ -500,6 +544,50 @@ for 1 second of inactivity before performing the search*/
                         ),
                         onPressed: _showFilterDialog,
                         tooltip: 'Filters',
+                      ),
+                    ),
+                    if (_activeFiltersCount > 0)
+                      Positioned(
+                        right: 4,
+                        top: 4,
+                        child: Container(
+                          padding: const EdgeInsets.all(4),
+                          decoration: const BoxDecoration(
+                            color: Colors.amber,
+                            shape: BoxShape.circle,
+                          ),
+                          constraints: const BoxConstraints(
+                            minWidth: 18,
+                            minHeight: 18,
+                          ),
+                          child: Text(
+                            '$_activeFiltersCount',
+                            style: const TextStyle(
+                              color: Colors.black,
+                              fontSize: 10,
+                              fontWeight: FontWeight.bold,
+                            ),
+                            textAlign: TextAlign.center,
+                          ),
+                        ),
+                      ),
+                  ],
+                ),
+                // ****//
+                Stack(
+                  children: [
+                    Container(
+                      decoration: BoxDecoration(
+                        color: _activeFiltersCount > 0 ? Colors.red : Colors.grey[200],
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                      child: IconButton(
+                        icon: Icon(
+                          Icons.filter_alt_outlined,
+                          color: _activeFiltersCount > 0 ? Colors.white : Colors.grey[700],
+                        ),
+                        onPressed: _showOrderDialog,
+                        tooltip: 'Order',
                       ),
                     ),
                     if (_activeFiltersCount > 0)
