@@ -130,32 +130,49 @@ class _WhoIsThatPokemonScreenState extends State<WhoIsThatPokemonScreen> {
 }
 
 
-  void _startNewRound() {
-    // Use loaded API Pokémon, or fallback to passed pokedex
-    final pokemonList = _allPokemon.isNotEmpty ? _allPokemon : widget.pokedex;
-    
-    if (pokemonList.isEmpty) {
-      setState(() {
-        _feedback = 'No Pokémon available for the game.';
-      });
-      return;
+  void _safeSetState(VoidCallback fn) {
+    if (mounted) {
+      try {
+        setState(fn);
+      } catch (e) {
+        print('Error in setState: $e');
+      }
     }
+  }
 
-    _timer?.cancel();
+  void _startNewRound() {
+    try {
+      if (!mounted) return;
+      
+      // Use loaded API Pokémon, or fallback to passed pokedex
+      final pokemonList = _allPokemon.isNotEmpty ? _allPokemon : widget.pokedex;
+      
+      if (pokemonList.isEmpty) {
+        _safeSetState(() {
+          _feedback = 'No Pokémon available for the game.';
+        });
+        return;
+      }
 
-    final randomIndex = _random.nextInt(pokemonList.length);
-    final pokemon = pokemonList[randomIndex];
+      _timer?.cancel();
 
-    setState(() {
-      _currentPokemon = pokemon;
-      _isRevealed = false;
-      _roundActive = true;
-      _timeLeft = 20;
-      _feedback = '';
-      _guessController.clear();
-    });
+      final randomIndex = _random.nextInt(pokemonList.length);
+      final pokemon = pokemonList[randomIndex];
 
-    _startTimer();
+      _safeSetState(() {
+        _currentPokemon = pokemon;
+        _isRevealed = false;
+        _roundActive = true;
+        _timeLeft = 20;
+        _feedback = '';
+        _guessController.clear();
+      });
+
+      _startTimer();
+    } catch (e, stackTrace) {
+      print('Error in _startNewRound: $e');
+      print('Stack trace: $stackTrace');
+    }
   }
 
   void _startTimer() {
@@ -169,7 +186,7 @@ class _WhoIsThatPokemonScreenState extends State<WhoIsThatPokemonScreen> {
         timer.cancel();
         _onTimeUp();
       } else {
-        setState(() {
+        _safeSetState(() {
           _timeLeft--;
         });
       }
@@ -177,86 +194,122 @@ class _WhoIsThatPokemonScreenState extends State<WhoIsThatPokemonScreen> {
   }
 
   void _onTimeUp() {
-    if (!_roundActive || !mounted) return;
-
-    final endedScore = _score;
-    final pokemonName = _currentPokemon?.name ?? '???';
-
-    setState(() {
-      _roundActive = false;
-      _isRevealed = true;
-      _feedback = "Time's up! It was $pokemonName";
-      _timeLeft = 0;
-    });
-
-    // Save this run's score to ranking, then reset for next round
     try {
-      _updateRankingWithScore(endedScore);
-      
-      if (mounted) {
-        setState(() {
+      if (!_roundActive || !mounted) return;
+
+      final endedScore = _score;
+      final pokemonName = _currentPokemon?.name ?? '???';
+
+      _safeSetState(() {
+        _roundActive = false;
+        _isRevealed = true;
+        _feedback = "Time's up! It was $pokemonName";
+        _timeLeft = 0;
+      });
+
+      // Save this run's score to ranking, then reset for next round
+      try {
+        _updateRankingWithScore(endedScore);
+        
+        _safeSetState(() {
           _score = 0;  // Reset score for next round after saving
         });
+      } catch (e, stackTrace) {
+        print('Error saving score on time up: $e');
+        print('Stack trace: $stackTrace');
+        if (mounted) {
+          _showErrorDialog('Error saving score on time up: $e');
+          _safeSetState(() {
+            _score = 0;  // Reset score anyway even if save failed
+          });
+        }
       }
-    } catch (e) {
+    } catch (e, stackTrace) {
+      print('Error in _onTimeUp: $e');
+      print('Stack trace: $stackTrace');
       if (mounted) {
-        _showErrorDialog('Error saving score: $e');
+        _showErrorDialog('Error in time up handler: $e');
       }
     }
   }
 
  
   void _submitGuess() {
-    if (!_roundActive || _currentPokemon == null) return;
+    try {
+      if (!_roundActive || _currentPokemon == null) return;
 
-    final guess = _guessController.text.trim().toLowerCase();
-    if (guess.isEmpty) return;
+      final guess = _guessController.text.trim().toLowerCase();
+      if (guess.isEmpty) return;
 
-    final correctName = _currentPokemon!.name.trim().toLowerCase();
+      final correctName = _currentPokemon!.name.trim().toLowerCase();
 
-    if (guess == correctName) {
-      // Correct!
-      final points = 10 + _timeLeft; // base + bonus for remaining time
-      setState(() {
-        _score += points;
-        _roundActive = false;
-        _isRevealed = true;
-        _feedback = 'Correct! +$points points. It was ${_currentPokemon!.name}.';
-      });
+      if (guess == correctName) {
+        // Correct!
+        final points = 10 + _timeLeft; // base + bonus for remaining time
+        _safeSetState(() {
+          _score += points;
+          _roundActive = false;
+          _isRevealed = true;
+          _feedback = 'Correct! +$points points. It was ${_currentPokemon!.name}.';
+        });
 
-      _timer?.cancel();
-      _updateRankingWithScore(_score);
-    } else {
-      // Wrong but round continues
-      setState(() {
-        _feedback = 'Not quite! Try again...';
-      });
+        _timer?.cancel();
+        
+        try {
+          _updateRankingWithScore(_score);
+        } catch (e) {
+          if (mounted) {
+            _showErrorDialog('Error saving score on correct guess: $e');
+          }
+        }
+      } else {
+        // Wrong but round continues
+        _safeSetState(() {
+          _feedback = 'Not quite! Try again...';
+        });
+      }
+    } catch (e, stackTrace) {
+      print('Error in _submitGuess: $e');
+      print('Stack trace: $stackTrace');
+      if (mounted) {
+        _showErrorDialog('Error processing guess: $e');
+      }
     }
   }
 
   void _resetGame() {
-    _timer?.cancel();
+    try {
+      _timer?.cancel();
 
-    // Only save score if a round is active (game in progress)
-    if (_roundActive) {
-      try {
-        final endedScore = _score;
-        _updateRankingWithScore(endedScore);
-      } catch (e) {
-        if (mounted) {
-          _showErrorDialog('Error saving score: $e');
+      // Only save score if a round is active (game in progress)
+      if (_roundActive) {
+        try {
+          final endedScore = _score;
+          _updateRankingWithScore(endedScore);
+        } catch (e, stackTrace) {
+          print('Error saving score on reset: $e');
+          print('Stack trace: $stackTrace');
+          if (mounted) {
+            _showErrorDialog('Error saving score on reset: $e');
+          }
         }
       }
-    }
 
-    setState(() {
-      _score = 0;
-      _feedback = '';
-      _roundActive = false;
-      _isRevealed = false;
-      _timeLeft = 20;
-      _currentPokemon = null;
-    });
+      _safeSetState(() {
+        _score = 0;
+        _feedback = '';
+        _roundActive = false;
+        _isRevealed = false;
+        _timeLeft = 20;
+        _currentPokemon = null;
+      });
+    } catch (e, stackTrace) {
+      print('Error in _resetGame: $e');
+      print('Stack trace: $stackTrace');
+      if (mounted) {
+        _showErrorDialog('Error resetting game: $e');
+      }
+    }
   }
 
 
