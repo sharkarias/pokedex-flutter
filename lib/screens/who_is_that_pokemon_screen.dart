@@ -5,6 +5,7 @@ import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import '../models/pokemon.dart';
+import '../services/pokeapi_graphql_service.dart';
 
 class WhoIsThatPokemonScreen extends StatefulWidget {
   /// Pass your full pokedex list here (for example _pokemonList from your list screen).
@@ -23,10 +24,12 @@ class WhoIsThatPokemonScreen extends StatefulWidget {
 class _WhoIsThatPokemonScreenState extends State<WhoIsThatPokemonScreen> {
   final Random _random = Random();
   final TextEditingController _guessController = TextEditingController();
+  final PokeApiGraphQLService _apiService = PokeApiGraphQLService();
 
   Pokemon? _currentPokemon;
   bool _isRevealed = false;
   bool _roundActive = false;
+  bool _isLoadingPokemon = false;
 
   int _timeLeft = 20;
   Timer? _timer;
@@ -34,6 +37,7 @@ class _WhoIsThatPokemonScreenState extends State<WhoIsThatPokemonScreen> {
   int _score = 0;
   int _bestScore = 0;
   List<int> _topScores = [];
+  List<Pokemon> _allPokemon = [];
 
   String _feedback = '';
 
@@ -41,6 +45,7 @@ class _WhoIsThatPokemonScreenState extends State<WhoIsThatPokemonScreen> {
   void initState() {
     super.initState();
     _loadRanking();
+    _loadAllPokemon();
   }
 
   @override
@@ -52,6 +57,8 @@ class _WhoIsThatPokemonScreenState extends State<WhoIsThatPokemonScreen> {
 
   Future<void> _loadRanking() async {
     final prefs = await SharedPreferences.getInstance();
+    if (!mounted) return;
+
     final best = prefs.getInt('wtp_best_score') ?? 0;
     final topScoresStrings = prefs.getStringList('wtp_top_scores') ?? [];
     final topScores = topScoresStrings.map(int.parse).toList()..sort((a, b) => b.compareTo(a));
@@ -62,44 +69,82 @@ class _WhoIsThatPokemonScreenState extends State<WhoIsThatPokemonScreen> {
     });
   }
 
-  Future<void> _saveRanking() async {
-    final prefs = await SharedPreferences.getInstance();
-    await prefs.setInt('wtp_best_score', _bestScore);
-    await prefs.setStringList(
-      'wtp_top_scores',
-      _topScores.map((e) => e.toString()).toList(),
-    );
-  }
+  Future<void> _loadAllPokemon() async {
+    try {
+      setState(() {
+        _isLoadingPokemon = true;
+      });
 
-  void _updateRankingIfNeeded() {
-    if (_score <= 0) return;
+      final response = await _apiService.fetchPokemonList(
+        pageSize: 1302, // Fetch all Pokémon (total count in PokeAPI)
+        pageNumber: 1,
+        orderByField: 'id',
+        orderDirection: 'asc',
+      );
 
-    bool changed = false;
-
-    if (_score > _bestScore) {
-      _bestScore = _score;
-      changed = true;
-    }
-
-    _topScores.add(_score);
-    _topScores.sort((a, b) => b.compareTo(a)); // Desc
-    if (_topScores.length > 5) {
-      _topScores = _topScores.sublist(0, 5);
-    }
-    changed = true;
-
-    if (changed) {
-      _saveRanking();
+      if (mounted) {
+        setState(() {
+          _allPokemon = response.results;
+          _isLoadingPokemon = false;
+        });
+      }
+    } catch (e) {
+      if (mounted) {
+        setState(() {
+          _isLoadingPokemon = false;
+        });
+        _showErrorDialog('Failed to load Pokémon: $e');
+      }
     }
   }
+
+  Future<void> _updateRankingWithScore(int runScore) async {
+  if (runScore <= 0) return;
+
+  final prefs = await SharedPreferences.getInstance();
+
+  // Update best score
+  int best = prefs.getInt('wtp_best_score') ?? 0;
+  if (runScore > best) {
+    best = runScore;
+    await prefs.setInt('wtp_best_score', best);
+  }
+
+  // Update top scores list
+  final topScoresStrings = prefs.getStringList('wtp_top_scores') ?? [];
+  final topScores = topScoresStrings.map(int.parse).toList();
+  topScores.add(runScore);
+  topScores.sort((a, b) => b.compareTo(a));
+  final trimmed = topScores.length > 5 ? topScores.sublist(0, 5) : topScores;
+
+  await prefs.setStringList(
+    'wtp_top_scores',
+    trimmed.map((e) => e.toString()).toList(),
+  );
+
+  if (!mounted) return;
+  setState(() {
+    _bestScore = best;
+    _topScores = trimmed;
+  });
+}
+
 
   void _startNewRound() {
-    if (widget.pokedex.isEmpty) return;
+    // Use loaded API Pokémon, or fallback to passed pokedex
+    final pokemonList = _allPokemon.isNotEmpty ? _allPokemon : widget.pokedex;
+    
+    if (pokemonList.isEmpty) {
+      setState(() {
+        _feedback = 'No Pokémon available for the game.';
+      });
+      return;
+    }
 
     _timer?.cancel();
 
-    final randomIndex = _random.nextInt(widget.pokedex.length);
-    final pokemon = widget.pokedex[randomIndex];
+    final randomIndex = _random.nextInt(pokemonList.length);
+    final pokemon = pokemonList[randomIndex];
 
     setState(() {
       _currentPokemon = pokemon;
@@ -132,16 +177,35 @@ class _WhoIsThatPokemonScreenState extends State<WhoIsThatPokemonScreen> {
   }
 
   void _onTimeUp() {
+    if (!_roundActive || !mounted) return;
+
+    final endedScore = _score;
+    final pokemonName = _currentPokemon?.name ?? '???';
+
     setState(() {
       _roundActive = false;
       _isRevealed = true;
-      _feedback = "Time's up! It was ${_currentPokemon?.name ?? '???'}";
+      _feedback = "Time's up! It was $pokemonName";
+      _timeLeft = 0;
     });
 
-    // Optionally update ranking after each round
-    _updateRankingIfNeeded();
+    // Save this run's score to ranking, then reset for next round
+    try {
+      _updateRankingWithScore(endedScore);
+      
+      if (mounted) {
+        setState(() {
+          _score = 0;  // Reset score for next round after saving
+        });
+      }
+    } catch (e) {
+      if (mounted) {
+        _showErrorDialog('Error saving score: $e');
+      }
+    }
   }
 
+ 
   void _submitGuess() {
     if (!_roundActive || _currentPokemon == null) return;
 
@@ -161,7 +225,7 @@ class _WhoIsThatPokemonScreenState extends State<WhoIsThatPokemonScreen> {
       });
 
       _timer?.cancel();
-      _updateRankingIfNeeded();
+      _updateRankingWithScore(_score);
     } else {
       // Wrong but round continues
       setState(() {
@@ -172,6 +236,19 @@ class _WhoIsThatPokemonScreenState extends State<WhoIsThatPokemonScreen> {
 
   void _resetGame() {
     _timer?.cancel();
+
+    // Only save score if a round is active (game in progress)
+    if (_roundActive) {
+      try {
+        final endedScore = _score;
+        _updateRankingWithScore(endedScore);
+      } catch (e) {
+        if (mounted) {
+          _showErrorDialog('Error saving score: $e');
+        }
+      }
+    }
+
     setState(() {
       _score = 0;
       _feedback = '';
@@ -182,15 +259,16 @@ class _WhoIsThatPokemonScreenState extends State<WhoIsThatPokemonScreen> {
     });
   }
 
+
   String _achievementLabel() {
     if (_bestScore >= 80) {
-      return '🏆 League Champion';
+      return 'League Champion';
     } else if (_bestScore >= 50) {
-      return '💪 Gym Challenger';
+      return 'Gym Challenger';
     } else if (_bestScore >= 20) {
-      return '✨ Rookie Trainer';
+      return 'Rookie Trainer';
     } else {
-      return '🌱 New Trainer';
+      return 'New Trainer';
     }
   }
 
@@ -204,6 +282,24 @@ class _WhoIsThatPokemonScreenState extends State<WhoIsThatPokemonScreen> {
     } else {
       return Colors.green;
     }
+  }
+
+  void _showErrorDialog(String message) {
+    if (!mounted) return;
+    
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Error'),
+        content: Text(message),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('OK'),
+          ),
+        ],
+      ),
+    );
   }
 
   @override
@@ -264,17 +360,28 @@ class _WhoIsThatPokemonScreenState extends State<WhoIsThatPokemonScreen> {
                     ),
                   ),
                   backgroundColor: _achievementColor().withOpacity(0.2),
-                  avatar: Text(
-                    _achievementLabel().split(' ').first,
-                    style: const TextStyle(fontSize: 14),
-                  ),
+                  
                 ),
-                Text(
-                  'Best: $_bestScore',
-                  style: const TextStyle(
-                    fontSize: 14,
-                    fontWeight: FontWeight.w500,
-                  ),
+                Column(
+                  crossAxisAlignment: CrossAxisAlignment.end,
+                  children: [
+                    Text(
+                      'Best: $_bestScore',
+                      style: const TextStyle(
+                        fontSize: 14,
+                        fontWeight: FontWeight.w500,
+                      ),
+                    ),
+                    const SizedBox(height: 4),
+                    Text(
+                      'Current: $_score',
+                      style: TextStyle(
+                        fontSize: 14,
+                        fontWeight: FontWeight.w500,
+                        color: Colors.grey[600],
+                      ),
+                    ),
+                  ],
                 ),
               ],
             ),
