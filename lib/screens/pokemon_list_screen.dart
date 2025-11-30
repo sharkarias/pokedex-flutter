@@ -32,6 +32,10 @@ class _PokemonListScreenState extends State<PokemonListScreen> {
   bool _isMythical = false;
   int _activeFiltersCount = 0;
 
+  // Order state
+  String _orderDirection = 'asc';
+  String _orderByField = 'id';
+
   @override
   void initState() {
     super.initState();
@@ -70,7 +74,8 @@ class _PokemonListScreenState extends State<PokemonListScreen> {
       final response = await _apiService.fetchPokemonList(
         pageSize: 20,
         pageNumber: 1,
-        orderList: 'asc',
+        orderByField: _orderByField,
+        orderDirection: _orderDirection,
       );
 
       setState(() {
@@ -99,6 +104,8 @@ class _PokemonListScreenState extends State<PokemonListScreen> {
       final response = await _apiService.fetchPokemonList(
         pageSize: 20,
         pageNumber: _currentPage + 1,
+        orderByField: _orderByField,
+        orderDirection: _orderDirection,
       );
 
       setState(() {
@@ -182,48 +189,219 @@ for 1 second of inactivity before performing the search*/
     }
   }
 
+void _applyOrdering() {
+  setState(() {
+    // Determine if search/filter view is active
+    final bool isSearchOrFilterActive =
+        _searchController.text.trim().isNotEmpty || _activeFiltersCount > 0;
+
+    if (isSearchOrFilterActive) {
+      // For searches/filters we already load the full matching set from the server,
+      // so client-side sorting is fine.
+      _searchResults.sort((a, b) {
+        final int cmp;
+        switch (_orderByField) {
+          case 'name':
+            cmp = a.name.toLowerCase().compareTo(b.name.toLowerCase());
+            break;
+          case 'id':
+          default:
+            cmp = (a.nationalDex).compareTo(b.nationalDex);
+            break;
+        }
+        return _orderDirection == 'asc' ? cmp : -cmp;
+      });
+    } else {
+      // For the main paginated list we must request the pages already ordered from
+      // the server. Clear the local list and reset pagination so the next load
+      // will fetch page 1 with the new order.
+      _pokemonList.clear();
+      _currentPage = 0;
+      _hasMore = true;
+    }
+  });
+
+  // If not in search/filter mode, trigger a reload (first page) using the
+  // updated ordering so the entire dataset will come back in order as the user
+  // scrolls.
+  if (!(_searchController.text.trim().isNotEmpty || _activeFiltersCount > 0)) {
+    _loadPokemon();
+  }
+}
 
   void _showOrderDialog() {
-    /*showDialog(
-      context: context,
-      builder: (context) => AlertDialog(
-        title: const Text('Sort Order'),
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            ListTile(
-              title: const Text('Ascending (A-Z)'),
-              leading: Radio<String>(
-                value: 'asc',
-                groupValue: _currentOrder,
-                onChanged: (value) {
-                  setState(() {
-                    _currentOrder = value ?? 'asc';
-                  });
-                  Navigator.pop(context);
-                  _loadPokemon();
-                },
+  // Local copies for the modal, we only commit on "Apply"
+  String tempOrderBy = _orderByField;
+  String tempOrderDirection = _orderDirection;
+
+  showModalBottomSheet(
+    context: context,
+    isScrollControlled: true,
+    shape: const RoundedRectangleBorder(
+      borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+    ),
+    builder: (context) => StatefulBuilder(
+      builder: (context, setModalState) {
+        final bool isDefaultOrder =
+            tempOrderBy == 'id' && tempOrderDirection == 'asc';
+
+        return Padding(
+          padding: EdgeInsets.only(
+            left: 24,
+            right: 24,
+            top: 16,
+            bottom: MediaQuery.of(context).viewInsets.bottom + 16,
+          ),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              // Handle bar
+              Center(
+                child: Container(
+                  width: 40,
+                  height: 4,
+                  decoration: BoxDecoration(
+                    color: Colors.grey[300],
+                    borderRadius: BorderRadius.circular(2),
+                  ),
+                ),
               ),
-            ),
-            ListTile(
-              title: const Text('Descending (Z-A)'),
-              leading: Radio<String>(
-                value: 'desc',
-                groupValue: _currentOrder,
-                onChanged: (value) {
-                  setState(() {
-                    _currentOrder = value ?? 'desc';
-                  });
-                  Navigator.pop(context);
-                  _loadPokemon();
-                },
+              const SizedBox(height: 16),
+
+              // Title + Reset
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  const Text(
+                    'Order Pokémon',
+                    style: TextStyle(
+                      fontSize: 24,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                  if (!isDefaultOrder)
+                    TextButton(
+                      onPressed: () {
+                        setModalState(() {
+                          tempOrderBy = 'id';
+                          tempOrderDirection = 'asc';
+                        });
+                      },
+                      child: const Text('Reset'),
+                    ),
+                ],
               ),
-            ),
-          ],
-        ),
-      ),
-    );*/
-  }
+              const SizedBox(height: 24),
+
+              const Text(
+                'Order by',
+                style: TextStyle(
+                  fontSize: 16,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+              const SizedBox(height: 8),
+
+              Row(
+                children: [
+                  // Dropdown: Number / Name / Type
+                  Expanded(
+                    child: DropdownButtonFormField<String>(
+                      value: tempOrderBy,
+                      decoration: InputDecoration(
+                        hintText: 'Select field',
+                        border: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                        contentPadding: const EdgeInsets.symmetric(
+                          horizontal: 16,
+                          vertical: 12,
+                        ),
+                      ),
+                      items: const [
+                        DropdownMenuItem(
+                          value: 'id',
+                          child: Text('Number'),
+                        ),
+                        DropdownMenuItem(
+                          value: 'name',
+                          child: Text('Name'),
+                        ),
+                      ],
+                      onChanged: (value) {
+                        if (value == null) return;
+                        setModalState(() {
+                          tempOrderBy = value;
+                        });
+                      },
+                    ),
+                  ),
+                  const SizedBox(width: 12),
+
+                  // Arrow toggle
+                  Column(
+                    children: [
+                      IconButton(
+                        onPressed: () {
+                          setModalState(() {
+                            tempOrderDirection =
+                                tempOrderDirection == 'asc' ? 'desc' : 'asc';
+                          });
+                        },
+                        icon: Icon(
+                          tempOrderDirection == 'asc'
+                              ? Icons.arrow_upward
+                              : Icons.arrow_downward,
+                          color: Colors.red,
+                        ),
+                        tooltip: tempOrderDirection == 'asc'
+                            ? 'Ascending'
+                            : 'Descending',
+                      ),
+                    ],
+                  ),
+                ],
+              ),
+
+              const SizedBox(height: 24),
+
+              // Apply button
+              SizedBox(
+                width: double.infinity,
+                child: ElevatedButton(
+                  onPressed: () {
+                    setState(() {
+                      _orderByField = tempOrderBy;
+                      _orderDirection = tempOrderDirection;
+                    });
+                    Navigator.pop(context);
+                    _applyOrdering();
+                  },
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: Colors.red,
+                    foregroundColor: Colors.white,
+                    padding: const EdgeInsets.symmetric(vertical: 16),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                  ),
+                  child: const Text(
+                    'Apply Order',
+                    style: TextStyle(
+                      fontSize: 16,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                ),
+              ),
+            ],
+          ),
+        );
+      },
+    ),
+  );
+}
 
 
   void _showFilterDialog() {

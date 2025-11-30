@@ -19,7 +19,8 @@ class PokeApiGraphQLService {
   Future<PokemonListResponse> fetchPokemonList({
     int pageSize = 20,
     int pageNumber = 1,
-    String orderList = 'asc',
+    String orderByField = 'id',
+    String orderDirection = 'asc',
   }) async {
     final offset = (pageNumber - 1) * pageSize;
 
@@ -27,7 +28,8 @@ class PokeApiGraphQLService {
       document: gql(PokemonQueries.getPokemonList(
         limit: pageSize,
         offset: offset,
-        orderList: orderList,
+        orderByField: orderByField,
+        orderDirection: orderDirection,
       )),
     );
 

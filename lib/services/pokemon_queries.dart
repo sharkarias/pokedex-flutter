@@ -7,10 +7,17 @@ class PokemonQueries {
   /// - limit: Number of Pokemon to fetch
   /// - offset: Offset for pagination
   /// - orderList: 'asc' or 'desc' for ordering the list
-  static String getPokemonList({int limit = 20, int offset = 0, String orderList = 'asc'}) {
+  static String getPokemonList({
+    int limit = 20,
+    int offset = 0,
+    String orderByField = 'id',
+    String orderDirection = 'asc',
+  }) {
+    // Build the order_by clause dynamically. Expecting callers to pass a valid field
+    // name (e.g. 'id' or 'name') and direction ('asc' or 'desc').
     return '''
       query GetPokemonList {
-        pokemon(limit: $limit, offset: $offset, order_by: {id: $orderList}, where: {is_default: {_eq: true}}) {
+        pokemon(limit: $limit, offset: $offset, order_by: {$orderByField: $orderDirection}, where: {is_default: {_eq: true}}) {
           id
           name
           pokemontypes {
@@ -207,7 +214,7 @@ static String searchPokemonWithFilters({
   }
   
   if (type != null) {
-    conditions.add('pokemontypes: {type: {name: {_eq: "$type"}}}');
+    conditions.add('pokemontypes: {some: {type: {name: {_eq: "$type"}}}}');
   }
   
   if (generation != null) {
