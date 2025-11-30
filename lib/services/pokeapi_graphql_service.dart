@@ -502,6 +502,8 @@ Future<List<Pokemon>> searchPokemonWithFilters({
   int? generation,
   bool? isLegendary,
   bool? isMythical,
+  String? ability,
+  String? eggGroup,
 }) async {
   final QueryOptions options = QueryOptions(
     document: gql(PokemonQueries.searchPokemonWithFilters(
@@ -510,6 +512,8 @@ Future<List<Pokemon>> searchPokemonWithFilters({
       generation: generation,
       isLegendary: isLegendary,
       isMythical: isMythical,
+      ability: ability,
+      eggGroup: eggGroup,
     )),
   );
 

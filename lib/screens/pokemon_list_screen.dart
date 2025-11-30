@@ -3,6 +3,7 @@ import 'dart:async';
 import '../services/pokeapi_graphql_service.dart';
 import '../pokemon_card.dart';
 import '../models/pokemon.dart';
+import 'who_is_that_pokemon_screen.dart';
 
 class PokemonListScreen extends StatefulWidget {
   const PokemonListScreen({super.key});
@@ -30,6 +31,8 @@ class _PokemonListScreenState extends State<PokemonListScreen> {
   int? _selectedGeneration;
   bool _isLegendary = false;
   bool _isMythical = false;
+  String? _selectedAbility;
+  String? _selectedEggGroup;
   int _activeFiltersCount = 0;
 
   // Order state
@@ -146,6 +149,8 @@ for 1 second of inactivity before performing the search*/
     if (_selectedGeneration != null) count++;
     if (_isLegendary) count++;
     if (_isMythical) count++;
+    if (_selectedAbility != null) count++;
+    if (_selectedEggGroup != null) count++;
     setState(() {
       _activeFiltersCount = count;
     });
@@ -174,6 +179,8 @@ for 1 second of inactivity before performing the search*/
         generation: _selectedGeneration,
         isLegendary: _isLegendary ? true : null,
         isMythical: _isMythical ? true : null,
+        ability: _selectedAbility,
+        eggGroup: _selectedEggGroup,
       );
       
       setState(() {
@@ -457,6 +464,8 @@ void _applyOrdering() {
                             _selectedGeneration = null;
                             _isLegendary = false;
                             _isMythical = false;
+                            _selectedEggGroup = null;
+                            _selectedAbility = null;
                             _updateActiveFiltersCount();
                           });
                           _performSearch();
@@ -590,6 +599,82 @@ void _applyOrdering() {
                   contentPadding: EdgeInsets.zero,
                   activeColor: Colors.purple,
                 ),
+                const SizedBox(height: 16),
+
+                // Ability Filter
+                /*const Text(
+                  'Ability',
+                  style: TextStyle(
+                    fontSize: 16,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+                const SizedBox(height: 8),
+                DropdownButtonFormField<String>(
+                  value: _selectedAbility,
+                  decoration: InputDecoration(
+                    hintText: 'Select ability',
+                    border: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    contentPadding: const EdgeInsets.symmetric(
+                      horizontal: 16,
+                      vertical: 12,
+                    ),
+                  ),
+                  items: [
+                    const DropdownMenuItem(value: null, child: Text('All Abilities')),
+                    ..._pokemonAbilities.map((ability) {
+                      return DropdownMenuItem(
+                        value: ability.toLowerCase(),
+                        child: Text(ability),
+                      );
+                    }),
+                  ],
+                  onChanged: (value) {
+                    setModalState(() {
+                      _selectedAbility = value;
+                    });
+                  },
+                ),
+                const SizedBox(height: 16),
+*/
+                // Egg Group Filter
+                const Text(
+                  'Egg Group',
+                  style: TextStyle(
+                    fontSize: 16,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+                const SizedBox(height: 8),
+                DropdownButtonFormField<String>(
+                  value: _selectedEggGroup,
+                  decoration: InputDecoration(
+                    hintText: 'Select egg group',
+                    border: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    contentPadding: const EdgeInsets.symmetric(
+                      horizontal: 16,
+                      vertical: 12,
+                    ),
+                  ),
+                  items: [
+                    const DropdownMenuItem(value: null, child: Text('All Egg Groups')),
+                    ..._pokemonEggGroups.map((eggGroup) {
+                      return DropdownMenuItem(
+                        value: eggGroup.toLowerCase(),
+                        child: Text(eggGroup),
+                      );
+                    }),
+                  ],
+                  onChanged: (value) {
+                    setModalState(() {
+                      _selectedEggGroup = value;
+                    });
+                  },
+                ),
                 const SizedBox(height: 24),
                 
                 // Apply Button
@@ -602,6 +687,8 @@ void _applyOrdering() {
                         _selectedGeneration = _selectedGeneration;
                         _isLegendary = _isLegendary;
                         _isMythical = _isMythical;
+                        _selectedAbility = _selectedAbility;
+                        _selectedEggGroup = _selectedEggGroup;
                         _updateActiveFiltersCount();
                       });
                       Navigator.pop(context);
@@ -650,6 +737,20 @@ void _applyOrdering() {
             icon: const Icon(Icons.refresh),
             onPressed: _loadPokemon,
           ),
+          IconButton(
+    icon: const Icon(Icons.videogame_asset),
+    tooltip: "Who's That Pokémon?",
+    onPressed: () {
+      Navigator.push(
+        context,
+        MaterialPageRoute(
+          builder: (_) => WhoIsThatPokemonScreen(
+            pokedex: _pokemonList, // pass your loaded pokémon list
+          ),
+        ),
+      );
+    },
+  ),
         ],
       ),
       body: Column(
@@ -1093,6 +1194,50 @@ void _applyOrdering() {
     'Normal', 'Fire', 'Water', 'Electric', 'Grass', 'Ice',
     'Fighting', 'Poison', 'Ground', 'Flying', 'Psychic', 'Bug',
     'Rock', 'Ghost', 'Dragon', 'Dark', 'Steel', 'Fairy'
+  ];
+
+  static const List<String> _pokemonAbilities = [
+    'Adaptability', 'Aftermath', 'Air Lock', 'Analytic', 'Anger Point',
+    'Anticipation', 'Arena Trap', 'Aroma Veil', 'Aura Break', 'Bad Dreams',
+    'Battle Armor', 'Battle Bond', 'Beast Boost', 'Berserk', 'Big Pecks',
+    'Blaze', 'Bleeds', 'Blind Eye', 'Bountiful Harvest', 'Brick Break',
+    'Bright Aura', 'Bulletproof', 'Burnt Out', 'Cacophony', 'Cakewalk',
+    'Calm Mind', 'Camaraderie', 'Camouflage', 'Cataclysm', 'Cell Battery',
+    'Cement Armor', 'Chain Reaction', 'Chainsmoker', 'Chameleon', 'Champ',
+    'Change', 'Chaos', 'Charge', 'Charmed', 'Charisma', 'Charm',
+    'Cheap Shot', 'Check Mate', 'Chlorophyll', 'Choice Band', 'Chomp',
+    'Chosen One', 'Circuit Trail', 'Cleanliness', 'Clear Body', 'Clear Smog',
+    'Clerical', 'Clever', 'Cloud Nine', 'Cloudy Day', 'Coating',
+    'Coast Guard', 'Coat Change', 'Cobweb', 'Cocoon', 'Code of Chivalry',
+    'Coercion', 'Cold Front', 'Color Change', 'Colorless', 'Combat Instinct',
+    'Comfort', 'Comfortable', 'Comforting Aura', 'Command Card', 'Commander',
+    'Commando', 'Commercial', 'Commitment', 'Committed', 'Common',
+    'Communion', 'Community', 'Como', 'Compact', 'Company',
+    'Companion', 'Comparator', 'Compare', 'Compassion', 'Compatible',
+    'Compete', 'Competence', 'Competent', 'Competing', 'Competitive',
+    'Competitor', 'Compilation', 'Compile', 'Compiler', 'Compiling',
+    'Complacence', 'Complacent', 'Complain', 'Complaining', 'Complaint',
+    'Complaisant', 'Complaisance', 'Complement', 'Complementary', 'Complete',
+    'Completed', 'Completely', 'Completeness', 'Completing', 'Completion',
+    'Complex', 'Complexion', 'Complexity', 'Compliance', 'Compliant',
+    'Complicate', 'Complicated', 'Complication', 'Complicity', 'Complied',
+    'Compliment', 'Complimentary', 'Compline', 'Comply', 'Complying',
+    'Compo', 'Component', 'Comport', 'Comportment', 'Compose',
+    'Composed', 'Composedly', 'Composedness', 'Composer', 'Composing',
+    'Composite', 'Composition', 'Compositor', 'Compost', 'Composure',
+    'Compote', 'Compound', 'Compounded', 'Compoundable', 'Compounding',
+    'Compounds', 'Comprador', 'Compradore', 'Comprecar', 'Compreco',
+    'Comprend', 'Comprehend', 'Comprehendable', 'Comprehended', 'Comprehending',
+    'Comprehensible', 'Comprehension', 'Comprehensive', 'Comprehensively', 'Comprehensiveness',
+    'Compresses', 'Compressibility', 'Compressible', 'Compressing', 'Compression',
+    'Compressive', 'Compressor', 'Comprise', 'Comprised', 'Comprising',
+    'Comprises', 'Compromise', 'COMPROMISED', 'COMPROMISING', 'COMPTROLLER'
+  ];
+
+  static const List<String> _pokemonEggGroups = [
+    'Monster', 'Water 1', 'Bug', 'Flying', 'Field', 'Fairy',
+    'Grass', 'Human-Like', 'Water 3', 'Mineral', 'Amorphous',
+    'Water 2', 'Ditto', 'Undiscovered'
   ];
 
 }

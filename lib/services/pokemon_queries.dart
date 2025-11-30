@@ -200,12 +200,16 @@ class PokemonQueries {
 /// - generation: Generation number filter (optional)
 /// - isLegendary: Filter for legendary Pokemon (optional)
 /// - isMythical: Filter for mythical Pokemon (optional)
+/// - ability: Ability filter (optional)
+/// - eggGroup: Egg group filter (optional)
 static String searchPokemonWithFilters({
   String? searchTerm,
   String? type,
   int? generation,
   bool? isLegendary,
   bool? isMythical,
+  String? ability,
+  String? eggGroup,
 }) {
   List<String> conditions = [];
   
@@ -228,6 +232,14 @@ static String searchPokemonWithFilters({
   
   if (isMythical == true) {
     conditions.add('pokemonspecy: {is_mythical: {_eq: true}}');
+  }
+  
+  if (ability != null) {
+    conditions.add('pokemonabilities: {some: {ability: {name: {_eq: "$ability"}}}}');
+  }
+  
+  if (eggGroup != null) {
+    conditions.add('pokemonspecy: {pokemonegggroups: {egggroup: {name: {_eq: "$eggGroup"}}}}');
   }
   
   final whereClause = conditions.isEmpty ? '' : 'where: {${conditions.join(', ')}},';
