@@ -249,7 +249,7 @@ class PokeApiGraphQLService {
 
     // Parse moves
     final movesData = data['pokemonmoves'] as List;
-    final movesSample = movesData.map((moveData) {
+    final allMoves = movesData.map((moveData) {
       final moveName = _capitalize(moveData['move']['name'] as String);
       final level = moveData['level'] as int? ?? 0;
       final method = moveData['movelearnmethod']['name'] as String;
@@ -259,6 +259,17 @@ class PokeApiGraphQLService {
         method: method,
         level: level,
       );
+    }).toList();
+
+    // Remove duplicate moves by keeping unique move+method combinations
+    final seenMoves = <String>{};
+    final movesSample = allMoves.where((move) {
+      final key = '${move.name}_${move.method}';
+      if (seenMoves.contains(key)) {
+        return false;
+      }
+      seenMoves.add(key);
+      return true;
     }).toList();
 
     // Parse evolution chain

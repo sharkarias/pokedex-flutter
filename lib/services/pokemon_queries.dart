@@ -144,8 +144,6 @@ class PokemonQueries {
             }
           }
           pokemonmoves(
-            where: {movelearnmethod: {name: {_eq: "level-up"}}}
-            limit: 20
             order_by: {level: asc}
           ) {
             level

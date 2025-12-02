@@ -32,6 +32,8 @@ class _PokemonDetailsScreenState extends State<PokemonDetailsScreen>
   bool _isFavorite = false;
   bool _showShiny = false;
   String _selectedMoveFilter = 'level-up';
+  bool _showAllMoves = false;
+  static const int _initialMoveCount = 20;
 
   /*tabController controls the tabs where you can see different informations
   from a specific pokemon, such as stats, moves, evolution, etc */
@@ -938,9 +940,15 @@ class _PokemonDetailsScreenState extends State<PokemonDetailsScreen>
   }
 
   Widget _buildMovesTab(Pokemon pokemon) {
-    final filteredMoves = pokemon.movesSample
+    final allFilteredMoves = pokemon.movesSample
         .where((move) => move.method == _selectedMoveFilter)
         .toList();
+    
+    final displayedMoves = _showAllMoves 
+        ? allFilteredMoves 
+        : allFilteredMoves.take(_initialMoveCount).toList();
+    
+    final hasMoreMoves = allFilteredMoves.length > _initialMoveCount;
 
     return Column(
       children: [
@@ -959,9 +967,9 @@ class _PokemonDetailsScreenState extends State<PokemonDetailsScreen>
                 child: Row(
                   children: [
                     _buildFilterChip('Level Up', 'level-up'),
-                    //_buildFilterChip('TM/HM', 'machine'),
-                    //_buildFilterChip('Tutor', 'tutor'),
-                    //_buildFilterChip('Egg', 'egg'),
+                    _buildFilterChip('TM/HM', 'machine'),
+                    _buildFilterChip('Tutor', 'tutor'),
+                    _buildFilterChip('Egg', 'egg'),
                   ],
                 ),
               ),
@@ -969,7 +977,7 @@ class _PokemonDetailsScreenState extends State<PokemonDetailsScreen>
           ),
         ),
         Expanded(
-          child: filteredMoves.isEmpty
+          child: displayedMoves.isEmpty
               ? Center(
                   child: Text(
                     'No moves found for $_selectedMoveFilter',
@@ -978,9 +986,32 @@ class _PokemonDetailsScreenState extends State<PokemonDetailsScreen>
                 )
               : ListView.builder(
                   padding: const EdgeInsets.symmetric(horizontal: 16),
-                  itemCount: filteredMoves.length,
+                  itemCount: displayedMoves.length + (hasMoreMoves && !_showAllMoves ? 1 : 0),
                   itemBuilder: (context, index) {
-                    final move = filteredMoves[index];
+                    if (index == displayedMoves.length && hasMoreMoves && !_showAllMoves) {
+                      return Padding(
+                        padding: const EdgeInsets.symmetric(vertical: 16),
+                        child: Center(
+                          child: ElevatedButton.icon(
+                            onPressed: () {
+                              setState(() {
+                                _showAllMoves = true;
+                              });
+                            },
+                            icon: const Icon(Icons.expand_more),
+                            label: Text(
+                              'Load All Moves (${allFilteredMoves.length - _initialMoveCount} more)',
+                              style: const TextStyle(fontSize: 14),
+                            ),
+                            style: ElevatedButton.styleFrom(
+                              padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+                            ),
+                          ),
+                        ),
+                      );
+                    }
+                    
+                    final move = displayedMoves[index];
                     return Card(
                       margin: const EdgeInsets.only(bottom: 8),
                       child: ListTile(
@@ -1034,6 +1065,7 @@ class _PokemonDetailsScreenState extends State<PokemonDetailsScreen>
         onSelected: (selected) {
           setState(() {
             _selectedMoveFilter = value;
+            _showAllMoves = false; // Reset when changing filter
           });
         },
         selectedColor: _getTypeColor(_pokemon!.types.first).withOpacity(0.3),
