@@ -1,3 +1,4 @@
+import 'dart:io' show Platform;
 import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
 import 'package:sqflite_common_ffi/sqflite_ffi.dart';
@@ -12,11 +13,12 @@ void main() async {
   if (kIsWeb) {
     // Web platform
     databaseFactory = databaseFactoryFfiWeb;
-  } else {
-    // Desktop platforms (Windows, Linux, macOS)
+  } else if (Platform.isWindows || Platform.isLinux || Platform.isMacOS) {
+    // Desktop platforms only
     sqfliteFfiInit();
     databaseFactory = databaseFactoryFfi;
   }
+  // Mobile platforms (Android/iOS) use default SQLite - no initialization needed
   
   // Initialize the database on app startup
   await DatabaseHelper.instance.database;
