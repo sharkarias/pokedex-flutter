@@ -8,7 +8,6 @@ import '../models/pokemon.dart';
 import '../services/pokeapi_graphql_service.dart';
 
 class WhoIsThatPokemonScreen extends StatefulWidget {
-  /// Pass your full pokedex list here (for example _pokemonList from your list screen).
   final List<Pokemon> pokedex;
 
   const WhoIsThatPokemonScreen({
@@ -38,7 +37,7 @@ class _WhoIsThatPokemonScreenState extends State<WhoIsThatPokemonScreen> {
   List<int> _topScores = [];
   List<Pokemon> _allPokemon = [];
   List<Pokemon> _choices = []; // 4 pokemon options for multiple choice
-  int? _selectedChoiceIndex; // which button was selected
+  int? _selectedChoiceIndex; 
 
   String _feedback = '';
 
@@ -109,7 +108,6 @@ class _WhoIsThatPokemonScreenState extends State<WhoIsThatPokemonScreen> {
   final topScores = topScoresStrings.map(int.parse).toList();
   topScores.add(runScore);
   topScores.sort((a, b) => b.compareTo(a));
-  // Keep only top 10 scores
   final trimmed = topScores.length > 10 ? topScores.sublist(0, 10) : topScores;
 
   await prefs.setStringList(
@@ -230,7 +228,7 @@ class _WhoIsThatPokemonScreenState extends State<WhoIsThatPokemonScreen> {
         _updateRankingWithScore(endedScore);
         
         _safeSetState(() {
-          _score = 0;  // Reset score for next round after saving
+          _score = 0;
         });
       } catch (e, stackTrace) {
         print('Error saving score on time up: $e');
@@ -238,7 +236,7 @@ class _WhoIsThatPokemonScreenState extends State<WhoIsThatPokemonScreen> {
         if (mounted) {
           _showErrorDialog('Error saving score on time up: $e');
           _safeSetState(() {
-            _score = 0;  // Reset score anyway even if save failed
+            _score = 0;
           });
         }
       }
@@ -260,8 +258,7 @@ class _WhoIsThatPokemonScreenState extends State<WhoIsThatPokemonScreen> {
       final isCorrect = selectedPokemon.name == _currentPokemon!.name;
 
       if (isCorrect) {
-        // Correct! Add points and continue game
-        final points = 10 + _timeLeft; // base + bonus for remaining time
+        final points = 10 + _timeLeft;
         _safeSetState(() {
           _score += points;
           _roundActive = false;
@@ -271,9 +268,7 @@ class _WhoIsThatPokemonScreenState extends State<WhoIsThatPokemonScreen> {
         });
 
         _timer?.cancel();
-        // Don't save ranking here - only save when game ends (time up or reset)
       } else {
-        // Wrong but round continues - just update the selected index to show feedback
         _safeSetState(() {
           _selectedChoiceIndex = index;
           _feedback = 'Wrong! Try again...';
