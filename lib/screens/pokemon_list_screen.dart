@@ -4,6 +4,7 @@ import '../services/pokeapi_graphql_service.dart';
 import '../pokemon_card.dart';
 import '../models/pokemon.dart';
 import 'who_is_that_pokemon_screen.dart';
+import 'favorites_screen.dart';
 
 class PokemonListScreen extends StatefulWidget {
   const PokemonListScreen({super.key});
@@ -720,6 +721,100 @@ void _applyOrdering() {
     );
   }
 
+  Widget _buildDrawer(BuildContext context) {
+    return Drawer(
+      child: Column(
+        children: [
+          DrawerHeader(
+            decoration: const BoxDecoration(
+              gradient: LinearGradient(
+                colors: [Colors.red, Colors.redAccent],
+                begin: Alignment.topLeft,
+                end: Alignment.bottomRight,
+              ),
+            ),
+            child: const Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                Icon(
+                  Icons.catching_pokemon,
+                  size: 64,
+                  color: Colors.white,
+                ),
+                SizedBox(height: 12),
+                Text(
+                  'Pokedex Menu',
+                  style: TextStyle(
+                    color: Colors.white,
+                    fontSize: 24,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+              ],
+            ),
+          ),
+          ListTile(
+            leading: const Icon(Icons.list, color: Colors.red),
+            title: const Text(
+              'All Pokémon',
+              style: TextStyle(fontSize: 16),
+            ),
+            onTap: () {
+              Navigator.pop(context); // Close drawer
+            },
+          ),
+          ListTile(
+            leading: const Icon(Icons.favorite, color: Colors.red),
+            title: const Text(
+              'My Favorites',
+              style: TextStyle(fontSize: 16),
+            ),
+            onTap: () {
+              Navigator.pop(context); // Close drawer
+              Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (context) => const FavoritesScreen(),
+                ),
+              );
+            },
+          ),
+          ListTile(
+            leading: const Icon(Icons.videogame_asset, color: Colors.red),
+            title: const Text(
+              "Who's That Pokémon?",
+              style: TextStyle(fontSize: 16),
+            ),
+            subtitle: const Text('Trivia Game'),
+            onTap: () {
+              Navigator.pop(context); // Close drawer
+              Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (context) => WhoIsThatPokemonScreen(
+                    pokedex: _pokemonList,
+                  ),
+                ),
+              );
+            },
+          ),
+          const Divider(),
+          const Spacer(),
+          Padding(
+            padding: const EdgeInsets.all(16.0),
+            child: Text(
+              'Version 1.0.0',
+              style: TextStyle(
+                color: Colors.grey[600],
+                fontSize: 12,
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
 
   @override
   Widget build(BuildContext context) {
@@ -737,22 +832,9 @@ void _applyOrdering() {
             icon: const Icon(Icons.refresh),
             onPressed: _loadPokemon,
           ),
-          IconButton(
-    icon: const Icon(Icons.videogame_asset),
-    tooltip: "Who's That Pokémon?",
-    onPressed: () {
-      Navigator.push(
-        context,
-        MaterialPageRoute(
-          builder: (_) => WhoIsThatPokemonScreen(
-            pokedex: _pokemonList, // pass your loaded pokémon list
-          ),
-        ),
-      );
-    },
-  ),
         ],
       ),
+      drawer: _buildDrawer(context),
       body: Column(
         children: [
           // Search Bar with Filter Button
@@ -1196,43 +1278,44 @@ void _applyOrdering() {
     'Rock', 'Ghost', 'Dragon', 'Dark', 'Steel', 'Fairy'
   ];
 
-  static const List<String> _pokemonAbilities = [
-    'Adaptability', 'Aftermath', 'Air Lock', 'Analytic', 'Anger Point',
-    'Anticipation', 'Arena Trap', 'Aroma Veil', 'Aura Break', 'Bad Dreams',
-    'Battle Armor', 'Battle Bond', 'Beast Boost', 'Berserk', 'Big Pecks',
-    'Blaze', 'Bleeds', 'Blind Eye', 'Bountiful Harvest', 'Brick Break',
-    'Bright Aura', 'Bulletproof', 'Burnt Out', 'Cacophony', 'Cakewalk',
-    'Calm Mind', 'Camaraderie', 'Camouflage', 'Cataclysm', 'Cell Battery',
-    'Cement Armor', 'Chain Reaction', 'Chainsmoker', 'Chameleon', 'Champ',
-    'Change', 'Chaos', 'Charge', 'Charmed', 'Charisma', 'Charm',
-    'Cheap Shot', 'Check Mate', 'Chlorophyll', 'Choice Band', 'Chomp',
-    'Chosen One', 'Circuit Trail', 'Cleanliness', 'Clear Body', 'Clear Smog',
-    'Clerical', 'Clever', 'Cloud Nine', 'Cloudy Day', 'Coating',
-    'Coast Guard', 'Coat Change', 'Cobweb', 'Cocoon', 'Code of Chivalry',
-    'Coercion', 'Cold Front', 'Color Change', 'Colorless', 'Combat Instinct',
-    'Comfort', 'Comfortable', 'Comforting Aura', 'Command Card', 'Commander',
-    'Commando', 'Commercial', 'Commitment', 'Committed', 'Common',
-    'Communion', 'Community', 'Como', 'Compact', 'Company',
-    'Companion', 'Comparator', 'Compare', 'Compassion', 'Compatible',
-    'Compete', 'Competence', 'Competent', 'Competing', 'Competitive',
-    'Competitor', 'Compilation', 'Compile', 'Compiler', 'Compiling',
-    'Complacence', 'Complacent', 'Complain', 'Complaining', 'Complaint',
-    'Complaisant', 'Complaisance', 'Complement', 'Complementary', 'Complete',
-    'Completed', 'Completely', 'Completeness', 'Completing', 'Completion',
-    'Complex', 'Complexion', 'Complexity', 'Compliance', 'Compliant',
-    'Complicate', 'Complicated', 'Complication', 'Complicity', 'Complied',
-    'Compliment', 'Complimentary', 'Compline', 'Comply', 'Complying',
-    'Compo', 'Component', 'Comport', 'Comportment', 'Compose',
-    'Composed', 'Composedly', 'Composedness', 'Composer', 'Composing',
-    'Composite', 'Composition', 'Compositor', 'Compost', 'Composure',
-    'Compote', 'Compound', 'Compounded', 'Compoundable', 'Compounding',
-    'Compounds', 'Comprador', 'Compradore', 'Comprecar', 'Compreco',
-    'Comprend', 'Comprehend', 'Comprehendable', 'Comprehended', 'Comprehending',
-    'Comprehensible', 'Comprehension', 'Comprehensive', 'Comprehensively', 'Comprehensiveness',
-    'Compresses', 'Compressibility', 'Compressible', 'Compressing', 'Compression',
-    'Compressive', 'Compressor', 'Comprise', 'Comprised', 'Comprising',
-    'Comprises', 'Compromise', 'COMPROMISED', 'COMPROMISING', 'COMPTROLLER'
-  ];
+  // daba warning de no usarse  (i did writed forgot about english)
+  // static const List<String> _pokemonAbilities = [
+  //   'Adaptability', 'Aftermath', 'Air Lock', 'Analytic', 'Anger Point',
+  //   'Anticipation', 'Arena Trap', 'Aroma Veil', 'Aura Break', 'Bad Dreams',
+  //   'Battle Armor', 'Battle Bond', 'Beast Boost', 'Berserk', 'Big Pecks',
+  //   'Blaze', 'Bleeds', 'Blind Eye', 'Bountiful Harvest', 'Brick Break',
+  //   'Bright Aura', 'Bulletproof', 'Burnt Out', 'Cacophony', 'Cakewalk',
+  //   'Calm Mind', 'Camaraderie', 'Camouflage', 'Cataclysm', 'Cell Battery',
+  //   'Cement Armor', 'Chain Reaction', 'Chainsmoker', 'Chameleon', 'Champ',
+  //   'Change', 'Chaos', 'Charge', 'Charmed', 'Charisma', 'Charm',
+  //   'Cheap Shot', 'Check Mate', 'Chlorophyll', 'Choice Band', 'Chomp',
+  //   'Chosen One', 'Circuit Trail', 'Cleanliness', 'Clear Body', 'Clear Smog',
+  //   'Clerical', 'Clever', 'Cloud Nine', 'Cloudy Day', 'Coating',
+  //   'Coast Guard', 'Coat Change', 'Cobweb', 'Cocoon', 'Code of Chivalry',
+  //   'Coercion', 'Cold Front', 'Color Change', 'Colorless', 'Combat Instinct',
+  //   'Comfort', 'Comfortable', 'Comforting Aura', 'Command Card', 'Commander',
+  //   'Commando', 'Commercial', 'Commitment', 'Committed', 'Common',
+  //   'Communion', 'Community', 'Como', 'Compact', 'Company',
+  //   'Companion', 'Comparator', 'Compare', 'Compassion', 'Compatible',
+  //   'Compete', 'Competence', 'Competent', 'Competing', 'Competitive',
+  //   'Competitor', 'Compilation', 'Compile', 'Compiler', 'Compiling',
+  //   'Complacence', 'Complacent', 'Complain', 'Complaining', 'Complaint',
+  //   'Complaisant', 'Complaisance', 'Complement', 'Complementary', 'Complete',
+  //   'Completed', 'Completely', 'Completeness', 'Completing', 'Completion',
+  //   'Complex', 'Complexion', 'Complexity', 'Compliance', 'Compliant',
+  //   'Complicate', 'Complicated', 'Complication', 'Complicity', 'Complied',
+  //   'Compliment', 'Complimentary', 'Compline', 'Comply', 'Complying',
+  //   'Compo', 'Component', 'Comport', 'Comportment', 'Compose',
+  //   'Composed', 'Composedly', 'Composedness', 'Composer', 'Composing',
+  //   'Composite', 'Composition', 'Compositor', 'Compost', 'Composure',
+  //   'Compote', 'Compound', 'Compounded', 'Compoundable', 'Compounding',
+  //   'Compounds', 'Comprador', 'Compradore', 'Comprecar', 'Compreco',
+  //   'Comprend', 'Comprehend', 'Comprehendable', 'Comprehended', 'Comprehending',
+  //   'Comprehensible', 'Comprehension', 'Comprehensive', 'Comprehensively', 'Comprehensiveness',
+  //   'Compresses', 'Compressibility', 'Compressible', 'Compressing', 'Compression',
+  //   'Compressive', 'Compressor', 'Comprise', 'Comprised', 'Comprising',
+  //   'Comprises', 'Compromise', 'COMPROMISED', 'COMPROMISING', 'COMPTROLLER'
+  // ];
 
   static const List<String> _pokemonEggGroups = [
     'Monster', 'Water 1', 'Bug', 'Flying', 'Field', 'Fairy',
