@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:cached_network_image/cached_network_image.dart';
+import 'package:pokedex/utils.dart';
 import '../models/pokemon.dart';
 import '../screens/pokemon_details_screen.dart';
 
@@ -7,49 +8,6 @@ class PokemonCard extends StatelessWidget {
   final Pokemon pokemon;
 
   const PokemonCard({super.key, required this.pokemon});
-
-  Color _getTypeColor(String type) {
-    switch (type.toLowerCase()) {
-      case 'grass':
-        return Colors.green;
-      case 'poison':
-        return Colors.purple;
-      case 'fire':
-        return Colors.red;
-      case 'water':
-        return Colors.blue;
-      case 'electric':
-        return Colors.yellow;
-      case 'normal':
-        return Colors.grey;
-      case 'fighting':
-        return Colors.orange;
-      case 'flying':
-        return Colors.lightBlue;
-      case 'ground':
-        return Colors.brown;
-      case 'rock':
-        return Colors.grey[600]!;
-      case 'bug':
-        return Colors.lightGreen;
-      case 'ghost':
-        return Colors.deepPurple;
-      case 'steel':
-        return Colors.blueGrey;
-      case 'psychic':
-        return Colors.pink;
-      case 'ice':
-        return Colors.cyan;
-      case 'dragon':
-        return Colors.indigo;
-      case 'dark':
-        return Colors.brown[800]!;
-      case 'fairy':
-        return Colors.pinkAccent;
-      default:
-        return Colors.grey;
-    }
-  }
 
   @override
   Widget build(BuildContext context) {
@@ -155,7 +113,7 @@ class PokemonCard extends StatelessWidget {
                             vertical: 4,
                           ),
                           decoration: BoxDecoration(
-                            color: _getTypeColor(type),
+                            color: PokemonTypeColor.get(type),
                             borderRadius: BorderRadius.circular(12),
                           ),
                           child: Text(

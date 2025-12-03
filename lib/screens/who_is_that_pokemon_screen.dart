@@ -6,6 +6,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 
 import '../models/pokemon.dart';
 import '../services/pokeapi_graphql_service.dart';
+import '../utils.dart';
 
 class WhoIsThatPokemonScreen extends StatefulWidget {
   final List<Pokemon> pokedex;
@@ -22,7 +23,6 @@ class WhoIsThatPokemonScreen extends StatefulWidget {
 
 class _WhoIsThatPokemonScreenState extends State<WhoIsThatPokemonScreen> {
   final Random _random = Random();
-  final TextEditingController _guessController = TextEditingController();
   final PokeApiGraphQLService _apiService = PokeApiGraphQLService();
 
   Pokemon? _currentPokemon;
@@ -51,7 +51,6 @@ class _WhoIsThatPokemonScreenState extends State<WhoIsThatPokemonScreen> {
   @override
   void dispose() {
     _timer?.cancel();
-    _guessController.dispose();
     super.dispose();
   }
 
@@ -70,21 +69,24 @@ class _WhoIsThatPokemonScreenState extends State<WhoIsThatPokemonScreen> {
   }
 
   Future<void> _loadAllPokemon() async {
-    try {
+    
+    if (_allPokemon.isNotEmpty) return;
 
+    try {
       final response = await _apiService.fetchPokemonList(
-        pageSize: 1302, // Fetch all Pokémon (total count in PokeAPI)
+        pageSize: 1302,
         pageNumber: 1,
         orderByField: 'id',
         orderDirection: 'asc',
       );
 
-      if (mounted) {
-        setState(() {
-          _allPokemon = response.results;
-        });
-      }
-    } catch (e) {
+      if (!mounted) return;
+
+      setState(() {
+        _allPokemon = response.results;
+      });
+      
+      } catch (e) {
       if (mounted) {
         _showErrorDialog('Failed to load Pokémon: $e');
       }
@@ -103,7 +105,7 @@ class _WhoIsThatPokemonScreenState extends State<WhoIsThatPokemonScreen> {
     await prefs.setInt('wtp_best_score', best);
   }
 
-  // Update top scores list - add this score as a session completion
+  // Update top scores list (top 10)
   final topScoresStrings = prefs.getStringList('wtp_top_scores') ?? [];
   final topScores = topScoresStrings.map(int.parse).toList();
   topScores.add(runScore);
@@ -128,7 +130,7 @@ class _WhoIsThatPokemonScreenState extends State<WhoIsThatPokemonScreen> {
       try {
         setState(fn);
       } catch (e) {
-        print('Error in setState: $e');
+        _showErrorDialog('Error in setState: $e');
       }
     }
   }
@@ -180,14 +182,13 @@ class _WhoIsThatPokemonScreenState extends State<WhoIsThatPokemonScreen> {
         _roundActive = true;
         _timeLeft = 20;
         _feedback = '';
-        _guessController.clear();
       });
 
       _generateChoices();
       _startTimer();
     } catch (e, stackTrace) {
-      print('Error in _startNewRound: $e');
-      print('Stack trace: $stackTrace');
+      _showErrorDialog('Error in _startNewRound: $e');
+      _showErrorDialog('Stack trace: $stackTrace');
     }
   }
 
@@ -231,8 +232,8 @@ class _WhoIsThatPokemonScreenState extends State<WhoIsThatPokemonScreen> {
           _score = 0;
         });
       } catch (e, stackTrace) {
-        print('Error saving score on time up: $e');
-        print('Stack trace: $stackTrace');
+        _showErrorDialog('Error saving score on time up: $e');
+        _showErrorDialog('Stack trace: $stackTrace');
         if (mounted) {
           _showErrorDialog('Error saving score on time up: $e');
           _safeSetState(() {
@@ -241,8 +242,8 @@ class _WhoIsThatPokemonScreenState extends State<WhoIsThatPokemonScreen> {
         }
       }
     } catch (e, stackTrace) {
-      print('Error in _onTimeUp: $e');
-      print('Stack trace: $stackTrace');
+      _showErrorDialog('Error in _onTimeUp: $e');
+      _showErrorDialog('Stack trace: $stackTrace');
       if (mounted) {
         _showErrorDialog('Error in time up handler: $e');
       }
@@ -275,8 +276,8 @@ class _WhoIsThatPokemonScreenState extends State<WhoIsThatPokemonScreen> {
         });
       }
     } catch (e, stackTrace) {
-      print('Error in _onChoiceSelected: $e');
-      print('Stack trace: $stackTrace');
+      _showErrorDialog('Error in _onChoiceSelected: $e');
+      _showErrorDialog('Stack trace: $stackTrace');
       if (mounted) {
         _showErrorDialog('Error processing choice: $e');
       }
@@ -293,8 +294,8 @@ class _WhoIsThatPokemonScreenState extends State<WhoIsThatPokemonScreen> {
           final endedScore = _score;
           _updateRankingWithScore(endedScore);
         } catch (e, stackTrace) {
-          print('Error saving score on reset: $e');
-          print('Stack trace: $stackTrace');
+          _showErrorDialog('Error saving score on reset: $e');
+          _showErrorDialog('Stack trace: $stackTrace');
           if (mounted) {
             _showErrorDialog('Error saving score on reset: $e');
           }
@@ -312,8 +313,8 @@ class _WhoIsThatPokemonScreenState extends State<WhoIsThatPokemonScreen> {
         _selectedChoiceIndex = null;
       });
     } catch (e, stackTrace) {
-      print('Error in _resetGame: $e');
-      print('Stack trace: $stackTrace');
+      _showErrorDialog('Error in _resetGame: $e');
+      _showErrorDialog('Stack trace: $stackTrace');
       if (mounted) {
         _showErrorDialog('Error resetting game: $e');
       }
@@ -567,8 +568,7 @@ class _WhoIsThatPokemonScreenState extends State<WhoIsThatPokemonScreen> {
   }
 
   Widget _buildPokemonImage(Pokemon pokemon) {
-    // Adjust this to your model: imageUrl, sprite, artwork, etc.
-    final String? imageUrl = pokemon.officialArtworkUrl; // <-- change if your field is different
+    final String? imageUrl = pokemon.officialArtworkUrl; 
 
     final Widget image = Image.network(
       imageUrl ?? '',
@@ -591,8 +591,8 @@ class _WhoIsThatPokemonScreenState extends State<WhoIsThatPokemonScreen> {
         child: _isRevealed
             ? image
             : ColorFiltered(
-                colorFilter: const ColorFilter.mode(
-                  Colors.black,
+                colorFilter: ColorFilter.mode(
+                  PokemonTypeColor.get(pokemon.types.first),
                   BlendMode.srcATop,
                 ),
                 child: image,

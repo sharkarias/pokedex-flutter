@@ -3,6 +3,7 @@ import 'dart:async';
 import '../services/pokeapi_graphql_service.dart';
 import '../pokemon_card.dart';
 import '../models/pokemon.dart';
+import '../utils.dart';
 import 'who_is_that_pokemon_screen.dart';
 import 'favorites_screen.dart';
 
@@ -120,7 +121,7 @@ class _PokemonListScreenState extends State<PokemonListScreen> {
       });
 
       //for debugging 
-      //print('Loaded page $_currentPage, total Pokemon: ${_pokemonList.length}');
+      //_showErrorDialog('Loaded page $_currentPage, total Pokemon: ${_pokemonList.length}');
 
     } catch (e) {
       setState(() {
@@ -503,7 +504,7 @@ void _applyOrdering() {
                   ),
                   items: [
                     const DropdownMenuItem(value: null, child: Text('All Types')),
-                    ..._pokemonTypes.map((type) {
+                    ...pokemonTypes.map((type) {
                       return DropdownMenuItem(
                         value: type.toLowerCase(),
                         child: Row(
@@ -512,7 +513,7 @@ void _applyOrdering() {
                               width: 12,
                               height: 12,
                               decoration: BoxDecoration(
-                                color: _getTypeColor(type),
+                                color: PokemonTypeColor.get(type),
                                 shape: BoxShape.circle,
                               ),
                             ),
@@ -666,7 +667,7 @@ void _applyOrdering() {
                   ),
                   items: [
                     const DropdownMenuItem(value: null, child: Text('All Egg Groups')),
-                    ..._pokemonEggGroups.map((eggGroup) {
+                    ...pokemonEggGroups.map((eggGroup) {
                       return DropdownMenuItem(
                         value: eggGroup.toLowerCase(),
                         child: Text(eggGroup),
@@ -972,7 +973,7 @@ void _applyOrdering() {
                 children: [
                   if (_selectedType != null)
                     _buildFilterChip(
-                      label: _capitalize(_selectedType!),
+                      label: capitalize(_selectedType!),
                       onDeleted: () {
                         setState(() {
                           _selectedType = null;
@@ -980,7 +981,7 @@ void _applyOrdering() {
                         });
                         _performSearch();
                       },
-                      color: _getTypeColor(_capitalize(_selectedType!)),
+                      color: PokemonTypeColor.get(capitalize(_selectedType!)),
                     ),
                   if (_selectedGeneration != null)
                     _buildFilterChip(
@@ -1140,11 +1141,7 @@ void _applyOrdering() {
   }
 
 
-  Widget _buildFilterChip({
-    required String label,
-    required VoidCallback onDeleted,
-    required Color color,
-  }) {
+  Widget _buildFilterChip({required String label, required VoidCallback onDeleted, required Color color}) {
     return Chip(
       label: Text(
         label,
@@ -1228,41 +1225,6 @@ void _applyOrdering() {
     );
   }
 
-  Color _getTypeColor(String type) {
-    final typeColors = {
-      'Normal': const Color(0xFFA8A878),
-      'Fire': const Color(0xFFF08030),
-      'Water': const Color(0xFF6890F0),
-      'Electric': const Color(0xFFF8D030),
-      'Grass': const Color(0xFF78C850),
-      'Ice': const Color(0xFF98D8D8),
-      'Fighting': const Color(0xFFC03028),
-      'Poison': const Color(0xFFA040A0),
-      'Ground': const Color(0xFFE0C068),
-      'Flying': const Color(0xFFA890F0),
-      'Psychic': const Color(0xFFF85888),
-      'Bug': const Color(0xFFA8B820),
-      'Rock': const Color(0xFFB8A038),
-      'Ghost': const Color(0xFF705898),
-      'Dragon': const Color(0xFF7038F8),
-      'Dark': const Color(0xFF705848),
-      'Steel': const Color(0xFFB8B8D0),
-      'Fairy': const Color(0xFFEE99AC),
-    };
-    return typeColors[type] ?? Colors.grey;
-  }
-
-  String _capitalize(String text) {
-    if (text.isEmpty) return text;
-    return text[0].toUpperCase() + text.substring(1);
-  }
-
-  static const List<String> _pokemonTypes = [
-    'Normal', 'Fire', 'Water', 'Electric', 'Grass', 'Ice',
-    'Fighting', 'Poison', 'Ground', 'Flying', 'Psychic', 'Bug',
-    'Rock', 'Ghost', 'Dragon', 'Dark', 'Steel', 'Fairy'
-  ];
-
   // daba warning de no usarse  (i did writed forgot about english)
   // static const List<String> _pokemonAbilities = [
   //   'Adaptability', 'Aftermath', 'Air Lock', 'Analytic', 'Anger Point',
@@ -1302,10 +1264,5 @@ void _applyOrdering() {
   //   'Comprises', 'Compromise', 'COMPROMISED', 'COMPROMISING', 'COMPTROLLER'
   // ];
 
-  static const List<String> _pokemonEggGroups = [
-    'Monster', 'Water 1', 'Bug', 'Flying', 'Field', 'Fairy',
-    'Grass', 'Human-Like', 'Water 3', 'Mineral', 'Amorphous',
-    'Water 2', 'Ditto', 'Undiscovered'
-  ];
 
 }
