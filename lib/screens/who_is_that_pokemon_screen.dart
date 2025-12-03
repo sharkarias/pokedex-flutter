@@ -29,7 +29,6 @@ class _WhoIsThatPokemonScreenState extends State<WhoIsThatPokemonScreen> {
   Pokemon? _currentPokemon;
   bool _isRevealed = false;
   bool _roundActive = false;
-  bool _isLoadingPokemon = false;
 
   int _timeLeft = 20;
   Timer? _timer;
@@ -73,9 +72,6 @@ class _WhoIsThatPokemonScreenState extends State<WhoIsThatPokemonScreen> {
 
   Future<void> _loadAllPokemon() async {
     try {
-      setState(() {
-        _isLoadingPokemon = true;
-      });
 
       final response = await _apiService.fetchPokemonList(
         pageSize: 1302, // Fetch all Pokémon (total count in PokeAPI)
@@ -87,14 +83,10 @@ class _WhoIsThatPokemonScreenState extends State<WhoIsThatPokemonScreen> {
       if (mounted) {
         setState(() {
           _allPokemon = response.results;
-          _isLoadingPokemon = false;
         });
       }
     } catch (e) {
       if (mounted) {
-        setState(() {
-          _isLoadingPokemon = false;
-        });
         _showErrorDialog('Failed to load Pokémon: $e');
       }
     }
@@ -112,12 +104,13 @@ class _WhoIsThatPokemonScreenState extends State<WhoIsThatPokemonScreen> {
     await prefs.setInt('wtp_best_score', best);
   }
 
-  // Update top scores list
+  // Update top scores list - add this score as a session completion
   final topScoresStrings = prefs.getStringList('wtp_top_scores') ?? [];
   final topScores = topScoresStrings.map(int.parse).toList();
   topScores.add(runScore);
   topScores.sort((a, b) => b.compareTo(a));
-  final trimmed = topScores.length > 5 ? topScores.sublist(0, 5) : topScores;
+  // Keep only top 10 scores
+  final trimmed = topScores.length > 10 ? topScores.sublist(0, 10) : topScores;
 
   await prefs.setStringList(
     'wtp_top_scores',
@@ -232,7 +225,7 @@ class _WhoIsThatPokemonScreenState extends State<WhoIsThatPokemonScreen> {
         _timeLeft = 0;
       });
 
-      // Save this run's score to ranking, then reset for next round
+      // Save the final session score to ranking when time runs out (game over)
       try {
         _updateRankingWithScore(endedScore);
         
@@ -267,7 +260,7 @@ class _WhoIsThatPokemonScreenState extends State<WhoIsThatPokemonScreen> {
       final isCorrect = selectedPokemon.name == _currentPokemon!.name;
 
       if (isCorrect) {
-        // Correct!
+        // Correct! Add points and continue game
         final points = 10 + _timeLeft; // base + bonus for remaining time
         _safeSetState(() {
           _score += points;
@@ -278,14 +271,7 @@ class _WhoIsThatPokemonScreenState extends State<WhoIsThatPokemonScreen> {
         });
 
         _timer?.cancel();
-        
-        try {
-          _updateRankingWithScore(_score);
-        } catch (e) {
-          if (mounted) {
-            _showErrorDialog('Error saving score on correct guess: $e');
-          }
-        }
+        // Don't save ranking here - only save when game ends (time up or reset)
       } else {
         // Wrong but round continues - just update the selected index to show feedback
         _safeSetState(() {
@@ -341,27 +327,14 @@ class _WhoIsThatPokemonScreenState extends State<WhoIsThatPokemonScreen> {
 
 
   String _achievementLabel() {
-    if (_bestScore >= 200) {
+    if (_bestScore >= 425) {
       return 'League Champion';
-    } else if (_bestScore >= 150) {
-      
+    } else if (_bestScore >= 250) {
       return 'Gym Challenger';
-    } else if (_bestScore >= 50) {
+    } else if (_bestScore >= 100) {
       return 'Rookie Trainer';
     } else {
       return 'New Trainer';
-    }
-  }
-
-  Color _achievementColor() {
-    if (_bestScore >= 80) {
-      return Colors.amber;
-    } else if (_bestScore >= 50) {
-      return Colors.purpleAccent;
-    } else if (_bestScore >= 20) {
-      return Colors.blueAccent;
-    } else {
-      return Colors.green;
     }
   }
 
@@ -440,7 +413,6 @@ class _WhoIsThatPokemonScreenState extends State<WhoIsThatPokemonScreen> {
                       fontWeight: FontWeight.bold,
                     ),
                   ),
-                  backgroundColor: _achievementColor().withOpacity(0.2),
                   
                 ),
                 Column(
