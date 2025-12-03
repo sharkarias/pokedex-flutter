@@ -892,7 +892,7 @@ void _applyOrdering() {
                     ),
                   ),
                 ),
-                const SizedBox(width: 12),
+                const SizedBox(width: 15),
                 // Filter Button
                 Stack(
                   children: [
@@ -938,6 +938,8 @@ void _applyOrdering() {
                   ],
                 ),
                 // ****//
+
+                const SizedBox(width: 10),
                 Stack(
                   children: [
                     Container(
