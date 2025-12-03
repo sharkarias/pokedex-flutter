@@ -4,6 +4,7 @@ import 'package:share_plus/share_plus.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 import '../models/pokemon.dart';
 import '../services/pokeapi_graphql_service.dart';
+import '../services/tcgdex_service.dart';
 import '../database/database_helper.dart';
 
 class PokemonDetailsScreen extends StatefulWidget {
@@ -23,6 +24,7 @@ class PokemonDetailsScreen extends StatefulWidget {
 class _PokemonDetailsScreenState extends State<PokemonDetailsScreen>
     with SingleTickerProviderStateMixin {
   final PokeApiGraphQLService _apiService = PokeApiGraphQLService();
+  final TcgDexService _tcgDexService = TcgDexService();
   
   // Maximum stat value for bar charts and radar (rn it is hardcoded, can be dynamic)
   final double maxStatValue = 255.0;
@@ -34,6 +36,7 @@ class _PokemonDetailsScreenState extends State<PokemonDetailsScreen>
   bool _showShiny = false;
   String _selectedMoveFilter = 'level-up';
   bool _showAllMoves = false;
+  bool _isSharing = false;
   static const int _initialMoveCount = 20;
 
   /*tabController controls the tabs where you can see different informations
@@ -103,14 +106,50 @@ class _PokemonDetailsScreenState extends State<PokemonDetailsScreen>
     }
   }
 
-  void _sharePokemon() {
-    if (_pokemon != null) {
-      Share.share(
+  void _sharePokemon() async {
+    if (_pokemon == null || _isSharing) return;
+
+    setState(() {
+      _isSharing = true;
+    });
+
+    try {
+      // Try to download the Pokemon card image from TCGdex
+      final cardImagePath = await _tcgDexService.downloadPokemonCardImage(
+        _pokemon!.nationalDex,
+        _pokemon!.name,
+      );
+
+      if (cardImagePath != null) {
+        // Share the Pokemon card image
+        await Share.shareXFiles(
+          [XFile(cardImagePath)],
+          text: 'Check out ${_pokemon!.name} (#${_pokemon!.nationalDex})!\n'
+              'Types: ${_pokemon!.types.join(", ")}\n'
+              'Total Base Stats: ${_pokemon!.baseStats.total}',
+          subject: _pokemon!.name,
+        );
+      } else {
+        // Fallback to text-only share if card image is not available
+        await Share.share(
+          'Check out ${_pokemon!.name} (#${_pokemon!.nationalDex})!\n'
+          'Types: ${_pokemon!.types.join(", ")}\n'
+          'Total Base Stats: ${_pokemon!.baseStats.total}',
+          subject: _pokemon!.name,
+        );
+      }
+    } catch (e) {
+      // Fallback to text-only share on error
+      await Share.share(
         'Check out ${_pokemon!.name} (#${_pokemon!.nationalDex})!\n'
         'Types: ${_pokemon!.types.join(", ")}\n'
         'Total Base Stats: ${_pokemon!.baseStats.total}',
         subject: _pokemon!.name,
       );
+    } finally {
+      setState(() {
+        _isSharing = false;
+      });
     }
   }
 
@@ -301,8 +340,17 @@ class _PokemonDetailsScreenState extends State<PokemonDetailsScreen>
                 tooltip: 'Favorite',
               ),
               IconButton(
-                icon: const Icon(Icons.share),
-                onPressed: _sharePokemon,
+                icon: _isSharing 
+                    ? const SizedBox(
+                        width: 24,
+                        height: 24,
+                        child: CircularProgressIndicator(
+                          strokeWidth: 2,
+                          color: Colors.white,
+                        ),
+                      )
+                    : const Icon(Icons.share),
+                onPressed: _isSharing ? null : _sharePokemon,
                 tooltip: 'Share',
               ),
             ],
