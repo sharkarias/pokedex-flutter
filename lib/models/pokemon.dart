@@ -16,6 +16,14 @@ class PokemonAbility {
       shortEffect: json['short_effect'] as String,
     );
   }
+
+  Map<String, dynamic> toJson() {
+    return {
+      'name': name,
+      'is_hidden': isHidden,
+      'short_effect': shortEffect,
+    };
+  }
 }
 
 class PokemonMove {
@@ -50,6 +58,19 @@ class PokemonMove {
       accuracy: json['accuracy'] as int?,
       pp: json['pp'] as int?,
     );
+  }
+
+  Map<String, dynamic> toJson() {
+    return {
+      'name': name,
+      'method': method,
+      'level': level,
+      'type': type,
+      'damage_class': damageClass,
+      'power': power,
+      'accuracy': accuracy,
+      'pp': pp,
+    };
   }
 }
 
@@ -102,6 +123,18 @@ class EvolutionTrigger {
         return trigger;
     }
   }
+
+  Map<String, dynamic> toJson() {
+    return {
+      'trigger': trigger,
+      'min_level': minLevel,
+      'item': item,
+      'held_item': heldItem,
+      'min_happiness': minHappiness,
+      'time_of_day': timeOfDay,
+      'location': location,
+    };
+  }
 }
 
 class EvolutionStage {
@@ -127,6 +160,15 @@ class EvolutionStage {
       evolvesFromId: json['evolves_from_id'] as int?,
     );
   }
+
+  Map<String, dynamic> toJson() {
+    return {
+      'name': name,
+      'id': id,
+      'trigger': trigger?.toJson(),
+      'evolves_from_id': evolvesFromId,
+    };
+  }
 }
 
 class PokemonForm {
@@ -149,6 +191,15 @@ class PokemonForm {
       types: List<String>.from(json['types']),
       spriteUrl: json['sprite_url'] as String?,
     );
+  }
+
+  Map<String, dynamic> toJson() {
+    return {
+      'name': name,
+      'form_name': formName,
+      'types': types,
+      'sprite_url': spriteUrl,
+    };
   }
 }
 
@@ -181,6 +232,18 @@ class BaseStats {
       speed: json['speed'] as int,
       total: json['total'] as int,
     );
+  }
+
+  Map<String, dynamic> toJson() {
+    return {
+      'hp': hp,
+      'attack': attack,
+      'defense': defense,
+      'special_attack': specialAttack,
+      'special_defense': specialDefense,
+      'speed': speed,
+      'total': total,
+    };
   }
 }
 
@@ -277,6 +340,36 @@ class Pokemon {
       shinyAvailable: json['shiny_available'] as bool,
       officialSources: Map<String, String>.from(json['official_sources']),
     );
+  }
+
+  Map<String, dynamic> toJson() {
+    return {
+      'national_dex': nationalDex,
+      'name': name,
+      'generation': generation,
+      'types': types,
+      'sprite_url': spriteUrl,
+      'shiny_sprite_url': shinySpriteeUrl,
+      'official_artwork_url': officialArtworkUrl,
+      'shiny_official_artwork_url': shinyOfficialArtworkUrl,
+      'height_m': heightM,
+      'weight_kg': weightKg,
+      'base_stats': baseStats.toJson(),
+      'abilities': abilities.map((a) => a.toJson()).toList(),
+      'egg_groups': eggGroups,
+      'is_legendary': isLegendary,
+      'is_mythical': isMythical,
+      'forms': forms.map((f) => f.toJson()).toList(),
+      'evolution_chain': evolutionChain.map((e) => e.toJson()).toList(),
+      'moves_sample': movesSample.map((m) => m.toJson()).toList(),
+      'flavor_text': flavorText,
+      'capture_rate': captureRate,
+      'color': color,
+      'damage_relations': damageRelations,
+      'offensive_damage_relations': offensiveDamageRelations,
+      'shiny_available': shinyAvailable,
+      'official_sources': officialSources,
+    };
   }
 }
 
