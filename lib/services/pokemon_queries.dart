@@ -216,7 +216,8 @@ static String searchPokemonWithFilters({
   }
   
   if (type != null) {
-    conditions.add('pokemontypes: {some: {type: {name: {_eq: "$type"}}}}');
+    conditions.add('pokemontypes: {type: {name: {_eq: "$type"}}}');
+    print("type: $type");
   }
   
   if (generation != null) {
