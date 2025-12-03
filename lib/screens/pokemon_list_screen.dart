@@ -91,7 +91,7 @@ class _PokemonListScreenState extends State<PokemonListScreen> {
       });
     } catch (e) {
       setState(() {
-        _error = 'Failed to load Pokemon: $e';
+        _error = 'You are offline. Please check your internet connection.';
         _isLoadingS = false;
       });
     }
@@ -128,7 +128,10 @@ class _PokemonListScreenState extends State<PokemonListScreen> {
       });
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Failed to load more Pokemon: $e')),
+          const SnackBar(
+            content: Text('You are offline. Cannot load more Pokémon.'),
+            backgroundColor: Colors.orange,
+          ),
         );
       }
     }
@@ -190,7 +193,7 @@ for 1 second of inactivity before performing the search*/
       });
     } catch (e) {
       setState(() {
-        _error = 'Error searching Pokémon: $e';
+        _error = 'Search unavailable offline. Please check your internet connection.';
         _isLoading = false;
         _searchResults = [];
       });
@@ -1103,17 +1106,22 @@ void _applyOrdering() {
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            const Icon(Icons.error_outline, size: 64, color: Colors.red),
+            const Icon(Icons.wifi_off, size: 64, color: Colors.orange),
             const SizedBox(height: 16),
+            const Text(
+              'You are offline',
+              style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
+            ),
+            const SizedBox(height: 8),
             Text(
               _error!,
               textAlign: TextAlign.center,
-              style: const TextStyle(fontSize: 16),
+              style: TextStyle(fontSize: 16, color: Colors.grey[600]),
             ),
             const SizedBox(height: 16),
             ElevatedButton(
               onPressed: _loadPokemon,
-              child: const Text('Retry'),
+              child: const Text('Try Again'),
             ),
           ],
         ),
