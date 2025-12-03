@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../pokemon_card.dart';
 import '../providers/pokemon_providers.dart';
 import '../state/pokemon_state.dart';
+import '../utils.dart';
 import 'who_is_that_pokemon_screen.dart';
 import 'favorites_screen.dart';
 
@@ -36,13 +37,85 @@ class _PokemonListScreenState extends ConsumerState<PokemonListScreen> {
     final state = ref.read(pokemonListProvider);
     if (_scrollController.position.pixels >=
             _scrollController.position.maxScrollExtent * 0.9 &&
-        !state.isLoadingMore &&
-        state.hasMore &&
-        !state.isSearchOrFilterActive) {
-      ref.read(pokemonListProvider.notifier).loadMorePokemon();
+        !_isLoadingS &&
+        _hasMore) {
+      _loadMorePokemon();
     }
   }
 
+  Future<void> _loadPokemon() async {
+    if (_isLoadingS) return;
+
+    setState(() {
+      _isLoadingS = true;
+      _error = null;
+    });
+
+    try {
+      final response = await _apiService.fetchPokemonList(
+        pageSize: 20,
+        pageNumber: 1,
+        orderByField: _orderByField,
+        orderDirection: _orderDirection,
+      );
+
+      setState(() {
+        _pokemonList.clear();
+        _pokemonList.addAll(response.results);
+        _currentPage = 1;
+        _hasMore = response.nextCursor != null;
+        _isLoadingS = false;
+      });
+    } catch (e) {
+      setState(() {
+        _error = 'You are offline. Please check your internet connection.';
+        _isLoadingS = false;
+      });
+    }
+  }
+
+  Future<void> _loadMorePokemon() async {
+    if (_isLoadingS || !_hasMore) return;
+
+    setState(() {
+      _isLoadingS = true;
+    });
+
+    try {
+      final response = await _apiService.fetchPokemonList(
+        pageSize: 20,
+        pageNumber: _currentPage + 1,
+        orderByField: _orderByField,
+        orderDirection: _orderDirection,
+      );
+
+      setState(() {
+        _pokemonList.addAll(response.results);
+        _currentPage++;
+        _hasMore = response.nextCursor != null;
+        _isLoadingS = false;
+      });
+
+      //for debugging 
+      //print('Loaded page $_currentPage, total Pokemon: ${_pokemonList.length}');
+
+    } catch (e) {
+      setState(() {
+        _isLoadingS = false;
+      });
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('You are offline. Cannot load more Pokémon.'),
+            backgroundColor: Colors.orange,
+          ),
+        );
+      }
+    }
+  }
+
+/*every time there's some change in the search bar, it will wait
+for 1 second of inactivity before performing the search*/
   void _onSearchChanged() {
     ref.read(pokemonListProvider.notifier).updateSearchTerm(_searchController.text);
   }
@@ -311,7 +384,7 @@ class _PokemonListScreenState extends ConsumerState<PokemonListScreen> {
                   ),
                   items: [
                     const DropdownMenuItem(value: null, child: Text('All Types')),
-                    ..._pokemonTypes.map((type) {
+                    ...pokemonTypes.map((type) {
                       return DropdownMenuItem(
                         value: type.toLowerCase(),
                         child: Row(
@@ -320,7 +393,7 @@ class _PokemonListScreenState extends ConsumerState<PokemonListScreen> {
                               width: 12,
                               height: 12,
                               decoration: BoxDecoration(
-                                color: _getTypeColor(type),
+                                color: PokemonTypeColor.get(type),
                                 shape: BoxShape.circle,
                               ),
                             ),
@@ -436,7 +509,7 @@ class _PokemonListScreenState extends ConsumerState<PokemonListScreen> {
                   ),
                   items: [
                     const DropdownMenuItem(value: null, child: Text('All Egg Groups')),
-                    ..._pokemonEggGroups.map((eggGroup) {
+                    ...pokemonEggGroups.map((eggGroup) {
                       return DropdownMenuItem(
                         value: eggGroup.toLowerCase(),
                         child: Text(eggGroup),
@@ -755,11 +828,11 @@ class _PokemonListScreenState extends ConsumerState<PokemonListScreen> {
                 children: [
                   if (state.filters.type != null)
                     _buildFilterChip(
-                      label: _capitalize(state.filters.type!),
+                      label: _capitalize(_selectedType!),
                       onDeleted: () {
                         ref.read(pokemonListProvider.notifier).clearFilter('type');
                       },
-                      color: _getTypeColor(_capitalize(state.filters.type!)),
+                      color: _getTypeColor(_capitalize(_selectedType!)),
                     ),
                   if (state.filters.generation != null)
                     _buildFilterChip(
@@ -911,11 +984,7 @@ class _PokemonListScreenState extends ConsumerState<PokemonListScreen> {
     );
   }
 
-  Widget _buildFilterChip({
-    required String label,
-    required VoidCallback onDeleted,
-    required Color color,
-  }) {
+  Widget _buildFilterChip({required String label, required VoidCallback onDeleted, required Color color}) {
     return Chip(
       label: Text(
         label,
@@ -1034,9 +1103,49 @@ class _PokemonListScreenState extends ConsumerState<PokemonListScreen> {
     'Rock', 'Ghost', 'Dragon', 'Dark', 'Steel', 'Fairy'
   ];
 
+  // daba warning de no usarse  (i did writed forgot about english)
+  // static const List<String> _pokemonAbilities = [
+  //   'Adaptability', 'Aftermath', 'Air Lock', 'Analytic', 'Anger Point',
+  //   'Anticipation', 'Arena Trap', 'Aroma Veil', 'Aura Break', 'Bad Dreams',
+  //   'Battle Armor', 'Battle Bond', 'Beast Boost', 'Berserk', 'Big Pecks',
+  //   'Blaze', 'Bleeds', 'Blind Eye', 'Bountiful Harvest', 'Brick Break',
+  //   'Bright Aura', 'Bulletproof', 'Burnt Out', 'Cacophony', 'Cakewalk',
+  //   'Calm Mind', 'Camaraderie', 'Camouflage', 'Cataclysm', 'Cell Battery',
+  //   'Cement Armor', 'Chain Reaction', 'Chainsmoker', 'Chameleon', 'Champ',
+  //   'Change', 'Chaos', 'Charge', 'Charmed', 'Charisma', 'Charm',
+  //   'Cheap Shot', 'Check Mate', 'Chlorophyll', 'Choice Band', 'Chomp',
+  //   'Chosen One', 'Circuit Trail', 'Cleanliness', 'Clear Body', 'Clear Smog',
+  //   'Clerical', 'Clever', 'Cloud Nine', 'Cloudy Day', 'Coating',
+  //   'Coast Guard', 'Coat Change', 'Cobweb', 'Cocoon', 'Code of Chivalry',
+  //   'Coercion', 'Cold Front', 'Color Change', 'Colorless', 'Combat Instinct',
+  //   'Comfort', 'Comfortable', 'Comforting Aura', 'Command Card', 'Commander',
+  //   'Commando', 'Commercial', 'Commitment', 'Committed', 'Common',
+  //   'Communion', 'Community', 'Como', 'Compact', 'Company',
+  //   'Companion', 'Comparator', 'Compare', 'Compassion', 'Compatible',
+  //   'Compete', 'Competence', 'Competent', 'Competing', 'Competitive',
+  //   'Competitor', 'Compilation', 'Compile', 'Compiler', 'Compiling',
+  //   'Complacence', 'Complacent', 'Complain', 'Complaining', 'Complaint',
+  //   'Complaisant', 'Complaisance', 'Complement', 'Complementary', 'Complete',
+  //   'Completed', 'Completely', 'Completeness', 'Completing', 'Completion',
+  //   'Complex', 'Complexion', 'Complexity', 'Compliance', 'Compliant',
+  //   'Complicate', 'Complicated', 'Complication', 'Complicity', 'Complied',
+  //   'Compliment', 'Complimentary', 'Compline', 'Comply', 'Complying',
+  //   'Compo', 'Component', 'Comport', 'Comportment', 'Compose',
+  //   'Composed', 'Composedly', 'Composedness', 'Composer', 'Composing',
+  //   'Composite', 'Composition', 'Compositor', 'Compost', 'Composure',
+  //   'Compote', 'Compound', 'Compounded', 'Compoundable', 'Compounding',
+  //   'Compounds', 'Comprador', 'Compradore', 'Comprecar', 'Compreco',
+  //   'Comprend', 'Comprehend', 'Comprehendable', 'Comprehended', 'Comprehending',
+  //   'Comprehensible', 'Comprehension', 'Comprehensive', 'Comprehensively', 'Comprehensiveness',
+  //   'Compresses', 'Compressibility', 'Compressible', 'Compressing', 'Compression',
+  //   'Compressive', 'Compressor', 'Comprise', 'Comprised', 'Comprising',
+  //   'Comprises', 'Compromise', 'COMPROMISED', 'COMPROMISING', 'COMPTROLLER'
+  // ];
+
   static const List<String> _pokemonEggGroups = [
     'Monster', 'Water 1', 'Bug', 'Flying', 'Field', 'Fairy',
     'Grass', 'Human-Like', 'Water 3', 'Mineral', 'Amorphous',
     'Water 2', 'Ditto', 'Undiscovered'
   ];
+
 }

@@ -1,5 +1,6 @@
 import 'package:graphql_flutter/graphql_flutter.dart';
 import '../models/pokemon.dart';
+import '../utils.dart';
 import 'pokemon_queries.dart';
 
 class PokeApiGraphQLService {
@@ -99,12 +100,12 @@ class PokeApiGraphQLService {
   /// Lightweight parser for list view - only parses: id, name, types, and sprite
   Pokemon _parsePokemonBasicFromGraphQL(Map<String, dynamic> data) {
     final id = data['id'] as int;
-    final name = _capitalize(data['name'] as String);
+    final name = capitalize(data['name'] as String);
     
     // Parse types
     final typesData = data['pokemontypes'] as List;
     final types = typesData
-        .map((t) => _capitalize(t['type']['name'] as String))
+        .map((t) => capitalize(t['type']['name'] as String))
         .toList();
 
     // Generate sprite URLs
@@ -158,12 +159,12 @@ class PokeApiGraphQLService {
   /// Detailed parser for individual Pokemon view - parses all fields
   Future<Pokemon> _parsePokemonFromGraphQL(Map<String, dynamic> data) async {
     final id = data['id'] as int;
-    final name = _capitalize(data['name'] as String);
+    final name = capitalize(data['name'] as String);
     
     // Parse types
     final typesData = data['pokemontypes'] as List;
     final types = typesData
-        .map((t) => _capitalize(t['type']['name'] as String))
+        .map((t) => capitalize(t['type']['name'] as String))
         .toList();
 
     // Parse stats
@@ -190,7 +191,7 @@ class PokeApiGraphQLService {
     final abilities = abilitiesData.map((abilityData) {
       final ability = abilityData['ability'];
       final isHidden = abilityData['is_hidden'] as bool;
-      final abilityName = _capitalize(ability['name'] as String);
+      final abilityName = capitalize(ability['name'] as String);
       
       String shortEffect = '';
       final effectTexts = ability['abilityeffecttexts'] as List?;
@@ -226,13 +227,13 @@ class PokeApiGraphQLService {
     String? color;
     final colorData = speciesData['pokemoncolor'];
     if (colorData != null) {
-      color = _capitalize(colorData['name'] as String);
+      color = capitalize(colorData['name'] as String);
     }
 
     // Parse egg groups
     final eggGroupsData = speciesData['pokemonegggroups'] as List;
     final eggGroups = eggGroupsData
-        .map((eg) => _capitalize(eg['egggroup']['name'] as String))
+        .map((eg) => capitalize(eg['egggroup']['name'] as String))
         .toList();
 
     // Parse flavor text
@@ -250,7 +251,7 @@ class PokeApiGraphQLService {
     // Parse moves
     final movesData = data['pokemonmoves'] as List;
     final allMoves = movesData.map((moveData) {
-      final moveName = _capitalize(moveData['move']['name'] as String);
+      final moveName = capitalize(moveData['move']['name'] as String);
       final level = moveData['level'] as int? ?? 0;
       final method = moveData['movelearnmethod']['name'] as String;
 
@@ -288,7 +289,7 @@ class PokeApiGraphQLService {
           
           for (var speciesInfo in sortedSpecies) {
             final speciesId = speciesInfo['id'] as int;
-            final speciesName = _capitalize(speciesInfo['name'] as String);
+            final speciesName = capitalize(speciesInfo['name'] as String);
             final evolvesFromId = speciesInfo['evolves_from_species_id'] as int?;
             
             // Get Pokemon ID from the default Pokemon
@@ -315,10 +316,10 @@ class PokeApiGraphQLService {
                 trigger = EvolutionTrigger(
                   trigger: triggerName,
                   minLevel: minLevel,
-                  item: itemName != null ? _capitalize(itemName) : null,
+                  item: itemName != null ? capitalize(itemName) : null,
                   minHappiness: minHappiness,
                   timeOfDay: timeOfDay,
-                  location: locationName != null ? _capitalize(locationName) : null,
+                  location: locationName != null ? capitalize(locationName) : null,
                 );
               }
             }
@@ -405,7 +406,7 @@ class PokeApiGraphQLService {
             final defensiveEfficacies = typeData[0]['typeefficacies'] as List;
             for (var efficacy in defensiveEfficacies) {
               final damageFactor = efficacy['damage_factor'] as int;
-              final attackingType = _capitalize(efficacy['TypeByTargetTypeId']['name'] as String);
+              final attackingType = capitalize(efficacy['TypeByTargetTypeId']['name'] as String);
               final multiplier = damageFactor / 100.0;
               
               if (multiplier != 1.0) {
@@ -417,7 +418,7 @@ class PokeApiGraphQLService {
             final offensiveEfficacies = typeData[0]['TypeefficaciesByTargetTypeId'] as List;
             for (var efficacy in offensiveEfficacies) {
               final damageFactor = efficacy['damage_factor'] as int;
-              final defendingType = _capitalize(efficacy['TypeByTargetTypeId']['name'] as String);
+              final defendingType = capitalize(efficacy['TypeByTargetTypeId']['name'] as String);
               final multiplier = damageFactor / 100.0;
               
               if (multiplier != 1.0) {
@@ -441,13 +442,6 @@ class PokeApiGraphQLService {
     };
   }
 
-  String _capitalize(String text) {
-    if (text.isEmpty) return text;
-    return text.split('-').map((word) {
-      if (word.isEmpty) return word;
-      return word[0].toUpperCase() + word.substring(1).toLowerCase();
-    }).join(' ');
-  }
 
   int _parseGeneration(String genString) {
     const romanToInt = {

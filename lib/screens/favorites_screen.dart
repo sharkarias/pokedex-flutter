@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:cached_network_image/cached_network_image.dart';
+import 'package:pokedex/utils.dart';
 import '../database/database_helper.dart';
 import '../models/pokemon.dart';
 import 'pokemon_details_screen.dart';
@@ -186,7 +187,7 @@ class _FavoritesScreenState extends State<FavoritesScreen> {
                           vertical: 2,
                         ),
                         decoration: BoxDecoration(
-                          color: _getTypeColor(type),
+                          color: PokemonTypeColor.get(type),
                           borderRadius: BorderRadius.circular(8),
                         ),
                         child: Text(
@@ -209,46 +210,4 @@ class _FavoritesScreenState extends State<FavoritesScreen> {
     );
   }
 
-  Color _getTypeColor(String type) {
-    switch (type.toLowerCase()) {
-      case 'grass':
-        return Colors.green;
-      case 'poison':
-        return Colors.purple;
-      case 'fire':
-        return Colors.red;
-      case 'water':
-        return Colors.blue;
-      case 'electric':
-        return Colors.yellow;
-      case 'normal':
-        return Colors.grey;
-      case 'fighting':
-        return Colors.orange;
-      case 'flying':
-        return Colors.lightBlue;
-      case 'ground':
-        return Colors.brown;
-      case 'rock':
-        return Colors.grey[600]!;
-      case 'bug':
-        return Colors.lightGreen;
-      case 'ghost':
-        return Colors.deepPurple;
-      case 'steel':
-        return Colors.blueGrey;
-      case 'psychic':
-        return Colors.pink;
-      case 'ice':
-        return Colors.cyan;
-      case 'dragon':
-        return Colors.indigo;
-      case 'dark':
-        return Colors.brown[800]!;
-      case 'fairy':
-        return Colors.pinkAccent;
-      default:
-        return Colors.grey;
-    }
-  }
 }

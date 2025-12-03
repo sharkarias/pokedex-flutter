@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:fl_chart/fl_chart.dart';
+import 'package:pokedex/utils.dart';
 import 'package:share_plus/share_plus.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 import '../models/pokemon.dart';
@@ -153,48 +154,6 @@ class _PokemonDetailsScreenState extends State<PokemonDetailsScreen>
     }
   }
 
-  Color _getTypeColor(String type) {
-    switch (type.toLowerCase()) {
-      case 'grass':
-        return Colors.green;
-      case 'poison':
-        return Colors.purple;
-      case 'fire':
-        return Colors.red;
-      case 'water':
-        return Colors.blue;
-      case 'electric':
-        return Colors.yellow;
-      case 'normal':
-        return Colors.grey;
-      case 'fighting':
-        return Colors.orange;
-      case 'flying':
-        return Colors.lightBlue;
-      case 'ground':
-        return Colors.brown;
-      case 'rock':
-        return Colors.grey[600]!;
-      case 'bug':
-        return Colors.lightGreen;
-      case 'ghost':
-        return Colors.deepPurple;
-      case 'steel':
-        return Colors.blueGrey;
-      case 'psychic':
-        return Colors.pink;
-      case 'ice':
-        return Colors.cyan;
-      case 'dragon':
-        return Colors.indigo;
-      case 'dark':
-        return Colors.brown[800]!;
-      case 'fairy':
-        return Colors.pinkAccent;
-      default:
-        return Colors.grey;
-    }
-  }
 
   @override
   Widget build(BuildContext context) {
@@ -233,7 +192,7 @@ class _PokemonDetailsScreenState extends State<PokemonDetailsScreen>
     }
 
     final pokemon = _pokemon!;
-    final primaryColor = _getTypeColor(pokemon.types.first);
+    final primaryColor = PokemonTypeColor.get(pokemon.types.first);
 
     return NestedScrollView(
       headerSliverBuilder: (BuildContext context, bool innerBoxIsScrolled) {
@@ -392,7 +351,7 @@ class _PokemonDetailsScreenState extends State<PokemonDetailsScreen>
                           vertical: 6,
                         ),
                         decoration: BoxDecoration(
-                          color: _getTypeColor(type),
+                          color: PokemonTypeColor.get(type),
                           borderRadius: BorderRadius.circular(16),
                         ),
                         child: Text(
@@ -523,7 +482,7 @@ class _PokemonDetailsScreenState extends State<PokemonDetailsScreen>
                   radarShape: RadarShape.polygon,
                   radarBackgroundColor: Colors.transparent,
                   radarBorderData: BorderSide(
-                    color: _getTypeColor(pokemon.types.first).withOpacity(0.3),
+                    color: PokemonTypeColor.get(pokemon.types.first).withOpacity(0.3),
                     width: 2,
                   ),
                   gridBorderData: BorderSide(
@@ -574,8 +533,8 @@ class _PokemonDetailsScreenState extends State<PokemonDetailsScreen>
                   },
                   dataSets: [
                     RadarDataSet(
-                      fillColor: _getTypeColor(pokemon.types.first).withOpacity(0.2),
-                      borderColor: _getTypeColor(pokemon.types.first),
+                      fillColor: PokemonTypeColor.get(pokemon.types.first).withOpacity(0.2),
+                      borderColor: PokemonTypeColor.get(pokemon.types.first),
                       borderWidth: 3,
                       entryRadius: 4,
                       dataEntries: [
@@ -880,12 +839,12 @@ class _PokemonDetailsScreenState extends State<PokemonDetailsScreen>
             padding: const EdgeInsets.all(12),
             decoration: BoxDecoration(
               color: isCurrentPokemon 
-                  ? _getTypeColor(currentPokemon.types.first).withOpacity(0.1)
+                  ? PokemonTypeColor.get(currentPokemon.types.first).withOpacity(0.1)
                   : Colors.white,
               borderRadius: BorderRadius.circular(16),
               border: Border.all(
                 color: isCurrentPokemon 
-                    ? _getTypeColor(currentPokemon.types.first)
+                    ? PokemonTypeColor.get(currentPokemon.types.first)
                     : Colors.grey[300]!,
                 width: 2,
               ),
@@ -1152,8 +1111,8 @@ class _PokemonDetailsScreenState extends State<PokemonDetailsScreen>
             _showAllMoves = false; // Reset when changing filter
           });
         },
-        selectedColor: _getTypeColor(_pokemon!.types.first).withOpacity(0.3),
-        checkmarkColor: _getTypeColor(_pokemon!.types.first),
+        selectedColor: PokemonTypeColor.get(_pokemon!.types.first).withOpacity(0.3),
+        checkmarkColor: PokemonTypeColor.get(_pokemon!.types.first),
       ),
     );
   }
@@ -1393,11 +1352,11 @@ class _PokemonDetailsScreenState extends State<PokemonDetailsScreen>
               child: Container(
                 padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
                 decoration: BoxDecoration(
-                  color: _getTypeColor(type),
+                  color: PokemonTypeColor.get(type),
                   borderRadius: BorderRadius.circular(6),
                   boxShadow: [
                     BoxShadow(
-                      color: _getTypeColor(type).withOpacity(0.2),
+                      color: PokemonTypeColor.get(type).withOpacity(0.2),
                       blurRadius: 3,
                       offset: const Offset(0, 1),
                     ),
