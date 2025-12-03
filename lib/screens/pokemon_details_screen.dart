@@ -1,9 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:fl_chart/fl_chart.dart';
-import 'package:shared_preferences/shared_preferences.dart';
 import 'package:share_plus/share_plus.dart';
 import '../models/pokemon.dart';
 import '../services/pokeapi_graphql_service.dart';
+import '../database/database_helper.dart';
 
 class PokemonDetailsScreen extends StatefulWidget {
   final int pokemonId;
@@ -66,36 +66,41 @@ class _PokemonDetailsScreenState extends State<PokemonDetailsScreen>
         _isLoading = false;
       });
     } catch (e) {
-      setState(() {
-        _error = 'Failed to load Pokemon details: $e';
-        _isLoading = false;
-      });
+      // Try to load from SQLite database if network fails
+      final cached = await DatabaseHelper.instance.getFavoritePokemon(widget.pokemonId);
+      if (cached != null) {
+        setState(() {
+          _pokemon = cached;
+          _isLoading = false;
+          _error = 'Showing cached data (offline)';
+        });
+      } else {
+        setState(() {
+          _error = 'Failed to load Pokemon details: $e';
+          _isLoading = false;
+        });
+      }
     }
   }
 
   Future<void> _loadFavoriteStatus() async {
-    final prefs = await SharedPreferences.getInstance();
-    final favorites = prefs.getStringList('favorites') ?? [];
+    final isFav = await DatabaseHelper.instance.isFavorite(widget.pokemonId);
     setState(() {
-      _isFavorite = favorites.contains(widget.pokemonId.toString());
+      _isFavorite = isFav;
     });
   }
 
   Future<void> _toggleFavorite() async {
-    final prefs = await SharedPreferences.getInstance();
-    final favorites = prefs.getStringList('favorites') ?? [];
-    
     setState(() {
-      if (_isFavorite) {
-        favorites.remove(widget.pokemonId.toString());
-        _isFavorite = false;
-      } else {
-        favorites.add(widget.pokemonId.toString());
-        _isFavorite = true;
-      }
+      _isFavorite = !_isFavorite;
     });
     
-    await prefs.setStringList('favorites', favorites);
+    // Save or remove Pokemon from SQLite database
+    if (_isFavorite && _pokemon != null) {
+      await DatabaseHelper.instance.saveFavoritePokemon(_pokemon!);
+    } else {
+      await DatabaseHelper.instance.deleteFavoritePokemon(widget.pokemonId);
+    }
   }
 
   void _sharePokemon() {
