@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:fl_chart/fl_chart.dart';
 import 'package:share_plus/share_plus.dart';
+import 'package:cached_network_image/cached_network_image.dart';
 import '../models/pokemon.dart';
 import '../services/pokeapi_graphql_service.dart';
 import '../database/database_helper.dart';
@@ -72,7 +73,6 @@ class _PokemonDetailsScreenState extends State<PokemonDetailsScreen>
         setState(() {
           _pokemon = cached;
           _isLoading = false;
-          _error = 'Showing cached data (offline)';
         });
       } else {
         setState(() {
@@ -236,19 +236,40 @@ class _PokemonDetailsScreenState extends State<PokemonDetailsScreen>
                   Center(
                     child: Hero(
                       tag: 'pokemon_${pokemon.nationalDex}',
-                      child: Image.network(
-                        _showShiny
+                      child: CachedNetworkImage(
+                        imageUrl: _showShiny
                             ? (pokemon.shinyOfficialArtworkUrl ??
                                 pokemon.officialArtworkUrl!)
                             : pokemon.officialArtworkUrl!,
                         height: 250,
                         fit: BoxFit.contain,
-                        errorBuilder: (context, error, stackTrace) {
-                          return Image.network(
-                            _showShiny
+                        placeholder: (context, url) => Container(
+                          height: 250,
+                          child: const Center(
+                            child: CircularProgressIndicator(),
+                          ),
+                        ),
+                        errorWidget: (context, url, error) {
+                          return CachedNetworkImage(
+                            imageUrl: _showShiny
                                 ? (pokemon.shinySpriteeUrl ?? pokemon.spriteUrl!)
                                 : pokemon.spriteUrl!,
                             height: 250,
+                            fit: BoxFit.contain,
+                            placeholder: (context, url) => Container(
+                              height: 250,
+                              child: const Center(
+                                child: CircularProgressIndicator(),
+                              ),
+                            ),
+                            errorWidget: (context, url, error) => Container(
+                              height: 250,
+                              child: const Icon(
+                                Icons.image_not_supported,
+                                size: 64,
+                                color: Colors.white,
+                              ),
+                            ),
                           );
                         },
                       ),
@@ -895,13 +916,23 @@ class _PokemonDetailsScreenState extends State<PokemonDetailsScreen>
   Widget _buildPokemonImage(int id, {required double size}) {
     return Hero(
       tag: 'evo_$id',
-      child: Image.network(
-        'https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/other/official-artwork/$id.png',
+      child: CachedNetworkImage(
+        imageUrl: 'https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/other/official-artwork/$id.png',
         height: size,
         width: size,
-        errorBuilder: (context, error, stackTrace) {
-          return Icon(Icons.image_not_supported, size: size / 2, color: Colors.grey);
-        },
+        fit: BoxFit.contain,
+        placeholder: (context, url) => SizedBox(
+          width: size,
+          height: size,
+          child: const Center(
+            child: CircularProgressIndicator(),
+          ),
+        ),
+        errorWidget: (context, url, error) => Icon(
+          Icons.image_not_supported, 
+          size: size / 2, 
+          color: Colors.grey
+        ),
       ),
     );
   }

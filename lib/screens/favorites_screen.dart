@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:cached_network_image/cached_network_image.dart';
 import '../database/database_helper.dart';
 import '../models/pokemon.dart';
 import 'pokemon_details_screen.dart';
@@ -133,10 +134,13 @@ class _FavoritesScreenState extends State<FavoritesScreen> {
                 padding: const EdgeInsets.all(8),
                 child: Hero(
                   tag: 'pokemon_${pokemon.nationalDex}',
-                  child: Image.network(
-                    pokemon.officialArtworkUrl ?? pokemon.spriteUrl ?? '',
+                  child: CachedNetworkImage(
+                    imageUrl: pokemon.officialArtworkUrl ?? pokemon.spriteUrl ?? '',
                     fit: BoxFit.contain,
-                    errorBuilder: (context, error, stackTrace) {
+                    placeholder: (context, url) => const Center(
+                      child: CircularProgressIndicator(),
+                    ),
+                    errorWidget: (context, url, error) {
                       return const Icon(Icons.image_not_supported, size: 48);
                     },
                   ),

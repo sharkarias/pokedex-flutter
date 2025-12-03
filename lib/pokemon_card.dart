@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:cached_network_image/cached_network_image.dart';
 import '../models/pokemon.dart';
 import '../screens/pokemon_details_screen.dart';
 
@@ -80,17 +81,36 @@ class PokemonCard extends StatelessWidget {
                   borderRadius: BorderRadius.circular(8),
                 ),
                 child: pokemon.officialArtworkUrl != null
-                    ? Image.network(
-                        pokemon.officialArtworkUrl!,
+                    ? CachedNetworkImage(
+                        imageUrl: pokemon.officialArtworkUrl!,
                         fit: BoxFit.contain,
-                        errorBuilder: (context, error, stackTrace) {
+                        placeholder: (context, url) => const Center(
+                          child: CircularProgressIndicator(),
+                        ),
+                        errorWidget: (context, url, error) {
                           return pokemon.spriteUrl != null
-                              ? Image.network(pokemon.spriteUrl!)
+                              ? CachedNetworkImage(
+                                  imageUrl: pokemon.spriteUrl!,
+                                  fit: BoxFit.contain,
+                                  placeholder: (context, url) => const Center(
+                                    child: CircularProgressIndicator(),
+                                  ),
+                                  errorWidget: (context, url, error) => 
+                                    const Icon(Icons.catching_pokemon, size: 40),
+                                )
                               : const Icon(Icons.catching_pokemon, size: 40);
                         },
                       )
                     : pokemon.spriteUrl != null
-                        ? Image.network(pokemon.spriteUrl!)
+                        ? CachedNetworkImage(
+                            imageUrl: pokemon.spriteUrl!,
+                            fit: BoxFit.contain,
+                            placeholder: (context, url) => const Center(
+                              child: CircularProgressIndicator(),
+                            ),
+                            errorWidget: (context, url, error) => 
+                              const Icon(Icons.catching_pokemon, size: 40),
+                          )
                         : const Icon(Icons.catching_pokemon, size: 40),
               ),
               const SizedBox(width: 16),
