@@ -71,6 +71,8 @@ class DatabaseHelper {
 
   // Save a favorite Pokemon to the database
   Future<void> saveFavoritePokemon(Pokemon pokemon) async {
+    if (kIsWeb) return; // Skip database operations on web
+    
     final db = await database;
     
     final data = {
@@ -111,6 +113,8 @@ class DatabaseHelper {
 
   // Get a favorite Pokemon by national dex number
   Future<Pokemon?> getFavoritePokemon(int nationalDex) async {
+    if (kIsWeb) return null; // Skip database operations on web
+    
     final db = await database;
     
     final results = await db.query(
@@ -126,6 +130,8 @@ class DatabaseHelper {
 
   // Get all favorite Pokemon
   Future<List<Pokemon>> getAllFavoritePokemon() async {
+    if (kIsWeb) return []; // Skip database operations on web
+    
     final db = await database;
     
     final results = await db.query(
@@ -138,6 +144,8 @@ class DatabaseHelper {
 
   // Delete a favorite Pokemon
   Future<void> deleteFavoritePokemon(int nationalDex) async {
+    if (kIsWeb) return; // Skip database operations on web
+    
     final db = await database;
     
     await db.delete(
@@ -149,6 +157,8 @@ class DatabaseHelper {
 
   // Check if a Pokemon is favorited
   Future<bool> isFavorite(int nationalDex) async {
+    if (kIsWeb) return false; // Skip database operations on web
+    
     final db = await database;
     
     final results = await db.query(
