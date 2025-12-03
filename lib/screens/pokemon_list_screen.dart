@@ -942,43 +942,18 @@ void _applyOrdering() {
                   children: [
                     Container(
                       decoration: BoxDecoration(
-                        color: _activeFiltersCount > 0 ? Colors.red : Colors.grey[200],
+                        color: Colors.grey[200],
                         borderRadius: BorderRadius.circular(12),
                       ),
                       child: IconButton(
                         icon: Icon(
                           Icons.filter_alt_outlined,
-                          color: _activeFiltersCount > 0 ? Colors.white : Colors.grey[700],
+                          color: Colors.grey[700],
                         ),
                         onPressed: _showOrderDialog,
                         tooltip: 'Order',
                       ),
                     ),
-                    if (_activeFiltersCount > 0)
-                      Positioned(
-                        right: 4,
-                        top: 4,
-                        child: Container(
-                          padding: const EdgeInsets.all(4),
-                          decoration: const BoxDecoration(
-                            color: Colors.amber,
-                            shape: BoxShape.circle,
-                          ),
-                          constraints: const BoxConstraints(
-                            minWidth: 18,
-                            minHeight: 18,
-                          ),
-                          child: Text(
-                            '$_activeFiltersCount',
-                            style: const TextStyle(
-                              color: Colors.black,
-                              fontSize: 10,
-                              fontWeight: FontWeight.bold,
-                            ),
-                            textAlign: TextAlign.center,
-                          ),
-                        ),
-                      ),
                   ],
                 ),
               ],

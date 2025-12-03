@@ -29,7 +29,6 @@ class _WhoIsThatPokemonScreenState extends State<WhoIsThatPokemonScreen> {
   Pokemon? _currentPokemon;
   bool _isRevealed = false;
   bool _roundActive = false;
-  bool _isLoadingPokemon = false;
 
   int _timeLeft = 20;
   Timer? _timer;
@@ -38,6 +37,8 @@ class _WhoIsThatPokemonScreenState extends State<WhoIsThatPokemonScreen> {
   int _bestScore = 0;
   List<int> _topScores = [];
   List<Pokemon> _allPokemon = [];
+  List<Pokemon> _choices = []; // 4 pokemon options for multiple choice
+  int? _selectedChoiceIndex; // which button was selected
 
   String _feedback = '';
 
@@ -71,9 +72,6 @@ class _WhoIsThatPokemonScreenState extends State<WhoIsThatPokemonScreen> {
 
   Future<void> _loadAllPokemon() async {
     try {
-      setState(() {
-        _isLoadingPokemon = true;
-      });
 
       final response = await _apiService.fetchPokemonList(
         pageSize: 1302, // Fetch all Pokémon (total count in PokeAPI)
@@ -85,14 +83,10 @@ class _WhoIsThatPokemonScreenState extends State<WhoIsThatPokemonScreen> {
       if (mounted) {
         setState(() {
           _allPokemon = response.results;
-          _isLoadingPokemon = false;
         });
       }
     } catch (e) {
       if (mounted) {
-        setState(() {
-          _isLoadingPokemon = false;
-        });
         _showErrorDialog('Failed to load Pokémon: $e');
       }
     }
@@ -110,12 +104,13 @@ class _WhoIsThatPokemonScreenState extends State<WhoIsThatPokemonScreen> {
     await prefs.setInt('wtp_best_score', best);
   }
 
-  // Update top scores list
+  // Update top scores list - add this score as a session completion
   final topScoresStrings = prefs.getStringList('wtp_top_scores') ?? [];
   final topScores = topScoresStrings.map(int.parse).toList();
   topScores.add(runScore);
   topScores.sort((a, b) => b.compareTo(a));
-  final trimmed = topScores.length > 5 ? topScores.sublist(0, 5) : topScores;
+  // Keep only top 10 scores
+  final trimmed = topScores.length > 10 ? topScores.sublist(0, 10) : topScores;
 
   await prefs.setStringList(
     'wtp_top_scores',
@@ -138,6 +133,28 @@ class _WhoIsThatPokemonScreenState extends State<WhoIsThatPokemonScreen> {
         print('Error in setState: $e');
       }
     }
+  }
+
+  /// Generates 4 random pokemon options: 1 correct (current) + 3 random wrong ones.
+  void _generateChoices() {
+    if (_currentPokemon == null) return;
+
+    final pokemonList = _allPokemon.isNotEmpty ? _allPokemon : widget.pokedex;
+    if (pokemonList.isEmpty) return;
+
+    // Collect 3 wrong options (different from current)
+    final wrongOptions = <Pokemon>[];
+    while (wrongOptions.length < 3) {
+      final randomPokemon = pokemonList[_random.nextInt(pokemonList.length)];
+      if (randomPokemon.name != _currentPokemon!.name && !wrongOptions.contains(randomPokemon)) {
+        wrongOptions.add(randomPokemon);
+      }
+    }
+
+    // Create list with correct answer + 3 wrong, shuffle it
+    _choices = [_currentPokemon!, ...wrongOptions];
+    _choices.shuffle(_random);
+    _selectedChoiceIndex = null;
   }
 
   void _startNewRound() {
@@ -168,6 +185,7 @@ class _WhoIsThatPokemonScreenState extends State<WhoIsThatPokemonScreen> {
         _guessController.clear();
       });
 
+      _generateChoices();
       _startTimer();
     } catch (e, stackTrace) {
       print('Error in _startNewRound: $e');
@@ -207,7 +225,7 @@ class _WhoIsThatPokemonScreenState extends State<WhoIsThatPokemonScreen> {
         _timeLeft = 0;
       });
 
-      // Save this run's score to ranking, then reset for next round
+      // Save the final session score to ranking when time runs out (game over)
       try {
         _updateRankingWithScore(endedScore);
         
@@ -234,45 +252,38 @@ class _WhoIsThatPokemonScreenState extends State<WhoIsThatPokemonScreen> {
   }
 
  
-  void _submitGuess() {
+  void _onChoiceSelected(int index) {
     try {
-      if (!_roundActive || _currentPokemon == null) return;
+      if (!_roundActive || _currentPokemon == null || index >= _choices.length) return;
 
-      final guess = _guessController.text.trim().toLowerCase();
-      if (guess.isEmpty) return;
+      final selectedPokemon = _choices[index];
+      final isCorrect = selectedPokemon.name == _currentPokemon!.name;
 
-      final correctName = _currentPokemon!.name.trim().toLowerCase();
-
-      if (guess == correctName) {
-        // Correct!
+      if (isCorrect) {
+        // Correct! Add points and continue game
         final points = 10 + _timeLeft; // base + bonus for remaining time
         _safeSetState(() {
           _score += points;
           _roundActive = false;
           _isRevealed = true;
+          _selectedChoiceIndex = index;
           _feedback = 'Correct! +$points points. It was ${_currentPokemon!.name}.';
         });
 
         _timer?.cancel();
-        
-        try {
-          _updateRankingWithScore(_score);
-        } catch (e) {
-          if (mounted) {
-            _showErrorDialog('Error saving score on correct guess: $e');
-          }
-        }
+        // Don't save ranking here - only save when game ends (time up or reset)
       } else {
-        // Wrong but round continues
+        // Wrong but round continues - just update the selected index to show feedback
         _safeSetState(() {
-          _feedback = 'Not quite! Try again...';
+          _selectedChoiceIndex = index;
+          _feedback = 'Wrong! Try again...';
         });
       }
     } catch (e, stackTrace) {
-      print('Error in _submitGuess: $e');
+      print('Error in _onChoiceSelected: $e');
       print('Stack trace: $stackTrace');
       if (mounted) {
-        _showErrorDialog('Error processing guess: $e');
+        _showErrorDialog('Error processing choice: $e');
       }
     }
   }
@@ -302,6 +313,8 @@ class _WhoIsThatPokemonScreenState extends State<WhoIsThatPokemonScreen> {
         _isRevealed = false;
         _timeLeft = 20;
         _currentPokemon = null;
+        _choices = [];
+        _selectedChoiceIndex = null;
       });
     } catch (e, stackTrace) {
       print('Error in _resetGame: $e');
@@ -314,26 +327,14 @@ class _WhoIsThatPokemonScreenState extends State<WhoIsThatPokemonScreen> {
 
 
   String _achievementLabel() {
-    if (_bestScore >= 80) {
+    if (_bestScore >= 425) {
       return 'League Champion';
-    } else if (_bestScore >= 50) {
+    } else if (_bestScore >= 250) {
       return 'Gym Challenger';
-    } else if (_bestScore >= 20) {
+    } else if (_bestScore >= 100) {
       return 'Rookie Trainer';
     } else {
       return 'New Trainer';
-    }
-  }
-
-  Color _achievementColor() {
-    if (_bestScore >= 80) {
-      return Colors.amber;
-    } else if (_bestScore >= 50) {
-      return Colors.purpleAccent;
-    } else if (_bestScore >= 20) {
-      return Colors.blueAccent;
-    } else {
-      return Colors.green;
     }
   }
 
@@ -412,7 +413,6 @@ class _WhoIsThatPokemonScreenState extends State<WhoIsThatPokemonScreen> {
                       fontWeight: FontWeight.bold,
                     ),
                   ),
-                  backgroundColor: _achievementColor().withOpacity(0.2),
                   
                 ),
                 Column(
@@ -485,23 +485,50 @@ class _WhoIsThatPokemonScreenState extends State<WhoIsThatPokemonScreen> {
 
             const SizedBox(height: 8),
 
-            // Guess input
-            TextField(
-              controller: _guessController,
-              textInputAction: TextInputAction.done,
-              onSubmitted: (_) => _submitGuess(),
-              enabled: _roundActive && pokemon != null,
-              decoration: InputDecoration(
-                hintText: _roundActive
-                    ? 'Type your guess here...'
-                    : 'Press "Next" to continue',
-                border: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(12),
+            // Multiple choice buttons
+            if (pokemon != null && _choices.isNotEmpty)
+              Wrap(
+                spacing: 8,
+                runSpacing: 8,
+                alignment: WrapAlignment.center,
+                children: List.generate(
+                  _choices.length,
+                  (index) {
+                    final choice = _choices[index];
+                    final isSelected = _selectedChoiceIndex == index;
+                    final isCorrect = choice.name == pokemon.name;
+                    final isAnswered = _selectedChoiceIndex != null && !_roundActive;
+
+                    // Determine button color
+                    Color buttonColor = Colors.blueAccent;
+                    if (isAnswered) {
+                      if (isCorrect) {
+                        buttonColor = Colors.green;
+                      } else if (isSelected) {
+                        buttonColor = Colors.red;
+                      }
+                    } else if (isSelected) {
+                      buttonColor = Colors.orangeAccent;
+                    }
+
+                    return ElevatedButton(
+                      onPressed: _roundActive ? () => _onChoiceSelected(index) : null,
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: buttonColor,
+                        foregroundColor: Colors.white,
+                        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+                      ),
+                      child: Text(
+                        choice.name,
+                        style: const TextStyle(
+                          fontWeight: FontWeight.w600,
+                          fontSize: 14,
+                        ),
+                      ),
+                    );
+                  },
                 ),
-                filled: true,
-                fillColor: Colors.grey[100],
               ),
-            ),
             const SizedBox(height: 8),
 
             // Feedback text
