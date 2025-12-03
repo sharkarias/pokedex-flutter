@@ -1,49 +1,25 @@
 import 'package:flutter/material.dart';
-import 'dart:async';
-import '../services/pokeapi_graphql_service.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../pokemon_card.dart';
-import '../models/pokemon.dart';
+import '../providers/pokemon_providers.dart';
+import '../state/pokemon_state.dart';
 import 'who_is_that_pokemon_screen.dart';
 import 'favorites_screen.dart';
 
-class PokemonListScreen extends StatefulWidget {
+class PokemonListScreen extends ConsumerStatefulWidget {
   const PokemonListScreen({super.key});
 
   @override
-  State<PokemonListScreen> createState() => _PokemonListScreenState();
+  ConsumerState<PokemonListScreen> createState() => _PokemonListScreenState();
 }
 
-class _PokemonListScreenState extends State<PokemonListScreen> {
+class _PokemonListScreenState extends ConsumerState<PokemonListScreen> {
   final TextEditingController _searchController = TextEditingController();
-  final PokeApiGraphQLService _apiService = PokeApiGraphQLService();
-  final List<Pokemon> _pokemonList = [];
-  List<Pokemon> _searchResults = [];
   final ScrollController _scrollController = ScrollController();
-  
-  int _currentPage = 1;
-  bool _isLoadingS = false; //for loading based on scrolling
-  bool _isLoading = false; //for loading based on search or filters
-  bool _hasMore = true;
-  String? _error;
-  Timer? _debounce;
-
-  // Filter state
-  String? _selectedType;
-  int? _selectedGeneration;
-  bool _isLegendary = false;
-  bool _isMythical = false;
-  String? _selectedAbility;
-  String? _selectedEggGroup;
-  int _activeFiltersCount = 0;
-
-  // Order state
-  String _orderDirection = 'asc';
-  String _orderByField = 'id';
 
   @override
   void initState() {
     super.initState();
-    _loadPokemon();
     _scrollController.addListener(_onScroll);
     _searchController.addListener(_onSearchChanged);
   }
@@ -53,369 +29,29 @@ class _PokemonListScreenState extends State<PokemonListScreen> {
     _scrollController.dispose();
     _searchController.removeListener(_onSearchChanged);
     _searchController.dispose();
-    _debounce?.cancel();
     super.dispose();
   }
 
   void _onScroll() {
+    final state = ref.read(pokemonListProvider);
     if (_scrollController.position.pixels >=
             _scrollController.position.maxScrollExtent * 0.9 &&
-        !_isLoadingS &&
-        _hasMore) {
-      _loadMorePokemon();
+        !state.isLoadingMore &&
+        state.hasMore &&
+        !state.isSearchOrFilterActive) {
+      ref.read(pokemonListProvider.notifier).loadMorePokemon();
     }
   }
 
-  Future<void> _loadPokemon() async {
-    if (_isLoadingS) return;
-
-    setState(() {
-      _isLoadingS = true;
-      _error = null;
-    });
-
-    try {
-      final response = await _apiService.fetchPokemonList(
-        pageSize: 20,
-        pageNumber: 1,
-        orderByField: _orderByField,
-        orderDirection: _orderDirection,
-      );
-
-      setState(() {
-        _pokemonList.clear();
-        _pokemonList.addAll(response.results);
-        _currentPage = 1;
-        _hasMore = response.nextCursor != null;
-        _isLoadingS = false;
-      });
-    } catch (e) {
-      setState(() {
-        _error = 'You are offline. Please check your internet connection.';
-        _isLoadingS = false;
-      });
-    }
-  }
-
-  Future<void> _loadMorePokemon() async {
-    if (_isLoadingS || !_hasMore) return;
-
-    setState(() {
-      _isLoadingS = true;
-    });
-
-    try {
-      final response = await _apiService.fetchPokemonList(
-        pageSize: 20,
-        pageNumber: _currentPage + 1,
-        orderByField: _orderByField,
-        orderDirection: _orderDirection,
-      );
-
-      setState(() {
-        _pokemonList.addAll(response.results);
-        _currentPage++;
-        _hasMore = response.nextCursor != null;
-        _isLoadingS = false;
-      });
-
-      //for debugging 
-      //print('Loaded page $_currentPage, total Pokemon: ${_pokemonList.length}');
-
-    } catch (e) {
-      setState(() {
-        _isLoadingS = false;
-      });
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('You are offline. Cannot load more Pokémon.'),
-            backgroundColor: Colors.orange,
-          ),
-        );
-      }
-    }
-  }
-
-/*every time there's some change in the search bar, it will wait
-for 1 second of inactivity before performing the search*/
   void _onSearchChanged() {
-    if (_debounce?.isActive ?? false) _debounce!.cancel();
-
-    _debounce = Timer(const Duration(seconds: 1), () {
-      _performSearch();
-    });
+    ref.read(pokemonListProvider.notifier).updateSearchTerm(_searchController.text);
   }
-
-  void _updateActiveFiltersCount() {
-    int count = 0;
-    if (_selectedType != null) count++;
-    if (_selectedGeneration != null) count++;
-    if (_isLegendary) count++;
-    if (_isMythical) count++;
-    if (_selectedAbility != null) count++;
-    if (_selectedEggGroup != null) count++;
-    setState(() {
-      _activeFiltersCount = count;
-    });
-  }
-  
-  Future<void> _performSearch() async {
-    final searchTerm = _searchController.text.trim();
-    
-    if (searchTerm.isEmpty && _activeFiltersCount == 0) {
-      setState(() {
-        _searchResults = [];
-        _error = null;
-      });
-      return;
-    }
-
-    setState(() {
-      _isLoading = true;
-      _error = null;
-    });
-
-    try {
-      final results = await _apiService.searchPokemonWithFilters(
-        searchTerm: searchTerm.isEmpty ? null : searchTerm,
-        type: _selectedType,
-        generation: _selectedGeneration,
-        isLegendary: _isLegendary ? true : null,
-        isMythical: _isMythical ? true : null,
-        ability: _selectedAbility,
-        eggGroup: _selectedEggGroup,
-      );
-      
-      setState(() {
-        _searchResults = results;
-        _isLoading = false;
-      });
-    } catch (e) {
-      setState(() {
-        _error = 'Search unavailable offline. Please check your internet connection.';
-        _isLoading = false;
-        _searchResults = [];
-      });
-    }
-  }
-
-void _applyOrdering() {
-  setState(() {
-    // Determine if search/filter view is active
-    final bool isSearchOrFilterActive =
-        _searchController.text.trim().isNotEmpty || _activeFiltersCount > 0;
-
-    if (isSearchOrFilterActive) {
-      // For searches/filters we already load the full matching set from the server,
-      // so client-side sorting is fine.
-      _searchResults.sort((a, b) {
-        final int cmp;
-        switch (_orderByField) {
-          case 'name':
-            cmp = a.name.toLowerCase().compareTo(b.name.toLowerCase());
-            break;
-          case 'id':
-          default:
-            cmp = (a.nationalDex).compareTo(b.nationalDex);
-            break;
-        }
-        return _orderDirection == 'asc' ? cmp : -cmp;
-      });
-    } else {
-      // For the main paginated list we must request the pages already ordered from
-      // the server. Clear the local list and reset pagination so the next load
-      // will fetch page 1 with the new order.
-      _pokemonList.clear();
-      _currentPage = 0;
-      _hasMore = true;
-    }
-  });
-
-  // If not in search/filter mode, trigger a reload (first page) using the
-  // updated ordering so the entire dataset will come back in order as the user
-  // scrolls.
-  if (!(_searchController.text.trim().isNotEmpty || _activeFiltersCount > 0)) {
-    _loadPokemon();
-  }
-}
 
   void _showOrderDialog() {
-  // Local copies for the modal, we only commit on "Apply"
-  String tempOrderBy = _orderByField;
-  String tempOrderDirection = _orderDirection;
+    final currentOrder = ref.read(pokemonListProvider).order;
+    String tempOrderBy = currentOrder.field;
+    String tempOrderDirection = currentOrder.direction;
 
-  showModalBottomSheet(
-    context: context,
-    isScrollControlled: true,
-    shape: const RoundedRectangleBorder(
-      borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
-    ),
-    builder: (context) => StatefulBuilder(
-      builder: (context, setModalState) {
-        final bool isDefaultOrder =
-            tempOrderBy == 'id' && tempOrderDirection == 'asc';
-
-        return Padding(
-          padding: EdgeInsets.only(
-            left: 24,
-            right: 24,
-            top: 16,
-            bottom: MediaQuery.of(context).viewInsets.bottom + 16,
-          ),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              // Handle bar
-              Center(
-                child: Container(
-                  width: 40,
-                  height: 4,
-                  decoration: BoxDecoration(
-                    color: Colors.grey[300],
-                    borderRadius: BorderRadius.circular(2),
-                  ),
-                ),
-              ),
-              const SizedBox(height: 16),
-
-              // Title + Reset
-              Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: [
-                  const Text(
-                    'Order Pokémon',
-                    style: TextStyle(
-                      fontSize: 24,
-                      fontWeight: FontWeight.bold,
-                    ),
-                  ),
-                  if (!isDefaultOrder)
-                    TextButton(
-                      onPressed: () {
-                        setModalState(() {
-                          tempOrderBy = 'id';
-                          tempOrderDirection = 'asc';
-                        });
-                      },
-                      child: const Text('Reset'),
-                    ),
-                ],
-              ),
-              const SizedBox(height: 24),
-
-              const Text(
-                'Order by',
-                style: TextStyle(
-                  fontSize: 16,
-                  fontWeight: FontWeight.bold,
-                ),
-              ),
-              const SizedBox(height: 8),
-
-              Row(
-                children: [
-                  // Dropdown: Number / Name / Type
-                  Expanded(
-                    child: DropdownButtonFormField<String>(
-                      value: tempOrderBy,
-                      decoration: InputDecoration(
-                        hintText: 'Select field',
-                        border: OutlineInputBorder(
-                          borderRadius: BorderRadius.circular(12),
-                        ),
-                        contentPadding: const EdgeInsets.symmetric(
-                          horizontal: 16,
-                          vertical: 12,
-                        ),
-                      ),
-                      items: const [
-                        DropdownMenuItem(
-                          value: 'id',
-                          child: Text('Number'),
-                        ),
-                        DropdownMenuItem(
-                          value: 'name',
-                          child: Text('Name'),
-                        ),
-                      ],
-                      onChanged: (value) {
-                        if (value == null) return;
-                        setModalState(() {
-                          tempOrderBy = value;
-                        });
-                      },
-                    ),
-                  ),
-                  const SizedBox(width: 12),
-
-                  // Arrow toggle
-                  Column(
-                    children: [
-                      IconButton(
-                        onPressed: () {
-                          setModalState(() {
-                            tempOrderDirection =
-                                tempOrderDirection == 'asc' ? 'desc' : 'asc';
-                          });
-                        },
-                        icon: Icon(
-                          tempOrderDirection == 'asc'
-                              ? Icons.arrow_upward
-                              : Icons.arrow_downward,
-                          color: Colors.red,
-                        ),
-                        tooltip: tempOrderDirection == 'asc'
-                            ? 'Ascending'
-                            : 'Descending',
-                      ),
-                    ],
-                  ),
-                ],
-              ),
-
-              const SizedBox(height: 24),
-
-              // Apply button
-              SizedBox(
-                width: double.infinity,
-                child: ElevatedButton(
-                  onPressed: () {
-                    setState(() {
-                      _orderByField = tempOrderBy;
-                      _orderDirection = tempOrderDirection;
-                    });
-                    Navigator.pop(context);
-                    _applyOrdering();
-                  },
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: Colors.red,
-                    foregroundColor: Colors.white,
-                    padding: const EdgeInsets.symmetric(vertical: 16),
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(12),
-                    ),
-                  ),
-                  child: const Text(
-                    'Apply Order',
-                    style: TextStyle(
-                      fontSize: 16,
-                      fontWeight: FontWeight.bold,
-                    ),
-                  ),
-                ),
-              ),
-            ],
-          ),
-        );
-      },
-    ),
-  );
-}
-
-
-  void _showFilterDialog() {
     showModalBottomSheet(
       context: context,
       isScrollControlled: true,
@@ -424,6 +60,186 @@ void _applyOrdering() {
       ),
       builder: (context) => StatefulBuilder(
         builder: (context, setModalState) {
+          final bool isDefaultOrder =
+              tempOrderBy == 'id' && tempOrderDirection == 'asc';
+
+          return Padding(
+            padding: EdgeInsets.only(
+              left: 24,
+              right: 24,
+              top: 16,
+              bottom: MediaQuery.of(context).viewInsets.bottom + 16,
+            ),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                // Handle bar
+                Center(
+                  child: Container(
+                    width: 40,
+                    height: 4,
+                    decoration: BoxDecoration(
+                      color: Colors.grey[300],
+                      borderRadius: BorderRadius.circular(2),
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 16),
+
+                // Title + Reset
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    const Text(
+                      'Order Pokémon',
+                      style: TextStyle(
+                        fontSize: 24,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                    if (!isDefaultOrder)
+                      TextButton(
+                        onPressed: () {
+                          setModalState(() {
+                            tempOrderBy = 'id';
+                            tempOrderDirection = 'asc';
+                          });
+                        },
+                        child: const Text('Reset'),
+                      ),
+                  ],
+                ),
+                const SizedBox(height: 24),
+
+                const Text(
+                  'Order by',
+                  style: TextStyle(
+                    fontSize: 16,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+                const SizedBox(height: 8),
+
+                Row(
+                  children: [
+                    // Dropdown: Number / Name
+                    Expanded(
+                      child: DropdownButtonFormField<String>(
+                        value: tempOrderBy,
+                        decoration: InputDecoration(
+                          hintText: 'Select field',
+                          border: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                          contentPadding: const EdgeInsets.symmetric(
+                            horizontal: 16,
+                            vertical: 12,
+                          ),
+                        ),
+                        items: const [
+                          DropdownMenuItem(
+                            value: 'id',
+                            child: Text('Number'),
+                          ),
+                          DropdownMenuItem(
+                            value: 'name',
+                            child: Text('Name'),
+                          ),
+                        ],
+                        onChanged: (value) {
+                          if (value == null) return;
+                          setModalState(() {
+                            tempOrderBy = value;
+                          });
+                        },
+                      ),
+                    ),
+                    const SizedBox(width: 12),
+
+                    // Arrow toggle
+                    Column(
+                      children: [
+                        IconButton(
+                          onPressed: () {
+                            setModalState(() {
+                              tempOrderDirection =
+                                  tempOrderDirection == 'asc' ? 'desc' : 'asc';
+                            });
+                          },
+                          icon: Icon(
+                            tempOrderDirection == 'asc'
+                                ? Icons.arrow_upward
+                                : Icons.arrow_downward,
+                            color: Colors.red,
+                          ),
+                          tooltip: tempOrderDirection == 'asc'
+                              ? 'Ascending'
+                              : 'Descending',
+                        ),
+                      ],
+                    ),
+                  ],
+                ),
+
+                const SizedBox(height: 24),
+
+                // Apply button
+                SizedBox(
+                  width: double.infinity,
+                  child: ElevatedButton(
+                    onPressed: () {
+                      ref.read(pokemonListProvider.notifier).updateOrder(
+                            PokemonOrder(
+                              field: tempOrderBy,
+                              direction: tempOrderDirection,
+                            ),
+                          );
+                      Navigator.pop(context);
+                    },
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: Colors.red,
+                      foregroundColor: Colors.white,
+                      padding: const EdgeInsets.symmetric(vertical: 16),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                    ),
+                    child: const Text(
+                      'Apply Order',
+                      style: TextStyle(
+                        fontSize: 16,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          );
+        },
+      ),
+    );
+  }
+
+  void _showFilterDialog() {
+    final currentFilters = ref.read(pokemonListProvider).filters;
+    String? tempSelectedType = currentFilters.type;
+    int? tempSelectedGeneration = currentFilters.generation;
+    bool tempIsLegendary = currentFilters.isLegendary;
+    bool tempIsMythical = currentFilters.isMythical;
+    String? tempSelectedEggGroup = currentFilters.eggGroup;
+
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      ),
+      builder: (context) => StatefulBuilder(
+        builder: (context, setModalState) {
+          final activeFiltersCount = ref.read(activeFiltersCountProvider);
+          
           return Container(
             padding: const EdgeInsets.all(24),
             child: Column(
@@ -442,7 +258,7 @@ void _applyOrdering() {
                   ),
                 ),
                 const SizedBox(height: 16),
-                
+
                 // Title with clear filters button
                 Row(
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
@@ -454,32 +270,24 @@ void _applyOrdering() {
                         fontWeight: FontWeight.bold,
                       ),
                     ),
-                    if (_activeFiltersCount > 0)
+                    if (activeFiltersCount > 0)
                       TextButton(
                         onPressed: () {
                           setModalState(() {
-                            _selectedType = null;
-                            _selectedGeneration = null;
-                            _isLegendary = false;
-                            _isMythical = false;
+                            tempSelectedType = null;
+                            tempSelectedGeneration = null;
+                            tempIsLegendary = false;
+                            tempIsMythical = false;
+                            tempSelectedEggGroup = null;
                           });
-                          setState(() {
-                            _selectedType = null;
-                            _selectedGeneration = null;
-                            _isLegendary = false;
-                            _isMythical = false;
-                            _selectedEggGroup = null;
-                            _selectedAbility = null;
-                            _updateActiveFiltersCount();
-                          });
-                          _performSearch();
+                          ref.read(pokemonListProvider.notifier).resetFilters();
                         },
                         child: const Text('Clear All'),
                       ),
                   ],
                 ),
                 const SizedBox(height: 24),
-                
+
                 // Type Filter
                 const Text(
                   'Type',
@@ -490,7 +298,7 @@ void _applyOrdering() {
                 ),
                 const SizedBox(height: 8),
                 DropdownButtonFormField<String>(
-                  value: _selectedType,
+                  value: tempSelectedType,
                   decoration: InputDecoration(
                     hintText: 'Select type',
                     border: OutlineInputBorder(
@@ -525,12 +333,12 @@ void _applyOrdering() {
                   ],
                   onChanged: (value) {
                     setModalState(() {
-                      _selectedType = value;
+                      tempSelectedType = value;
                     });
                   },
                 ),
                 const SizedBox(height: 16),
-                
+
                 // Generation Filter
                 const Text(
                   'Generation',
@@ -541,7 +349,7 @@ void _applyOrdering() {
                 ),
                 const SizedBox(height: 8),
                 DropdownButtonFormField<int>(
-                  value: _selectedGeneration,
+                  value: tempSelectedGeneration,
                   decoration: InputDecoration(
                     hintText: 'Select generation',
                     border: OutlineInputBorder(
@@ -564,12 +372,12 @@ void _applyOrdering() {
                   ],
                   onChanged: (value) {
                     setModalState(() {
-                      _selectedGeneration = value;
+                      tempSelectedGeneration = value;
                     });
                   },
                 ),
                 const SizedBox(height: 16),
-                
+
                 // Special Filters
                 const Text(
                   'Special',
@@ -581,10 +389,10 @@ void _applyOrdering() {
                 const SizedBox(height: 8),
                 CheckboxListTile(
                   title: const Text('Legendary Only'),
-                  value: _isLegendary,
+                  value: tempIsLegendary,
                   onChanged: (value) {
                     setModalState(() {
-                      _isLegendary = value ?? false;
+                      tempIsLegendary = value ?? false;
                     });
                   },
                   controlAffinity: ListTileControlAffinity.leading,
@@ -593,10 +401,10 @@ void _applyOrdering() {
                 ),
                 CheckboxListTile(
                   title: const Text('Mythical Only'),
-                  value: _isMythical,
+                  value: tempIsMythical,
                   onChanged: (value) {
                     setModalState(() {
-                      _isMythical = value ?? false;
+                      tempIsMythical = value ?? false;
                     });
                   },
                   controlAffinity: ListTileControlAffinity.leading,
@@ -605,44 +413,6 @@ void _applyOrdering() {
                 ),
                 const SizedBox(height: 16),
 
-                // Ability Filter
-                /*const Text(
-                  'Ability',
-                  style: TextStyle(
-                    fontSize: 16,
-                    fontWeight: FontWeight.bold,
-                  ),
-                ),
-                const SizedBox(height: 8),
-                DropdownButtonFormField<String>(
-                  value: _selectedAbility,
-                  decoration: InputDecoration(
-                    hintText: 'Select ability',
-                    border: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(12),
-                    ),
-                    contentPadding: const EdgeInsets.symmetric(
-                      horizontal: 16,
-                      vertical: 12,
-                    ),
-                  ),
-                  items: [
-                    const DropdownMenuItem(value: null, child: Text('All Abilities')),
-                    ..._pokemonAbilities.map((ability) {
-                      return DropdownMenuItem(
-                        value: ability.toLowerCase(),
-                        child: Text(ability),
-                      );
-                    }),
-                  ],
-                  onChanged: (value) {
-                    setModalState(() {
-                      _selectedAbility = value;
-                    });
-                  },
-                ),
-                const SizedBox(height: 16),
-*/
                 // Egg Group Filter
                 const Text(
                   'Egg Group',
@@ -653,7 +423,7 @@ void _applyOrdering() {
                 ),
                 const SizedBox(height: 8),
                 DropdownButtonFormField<String>(
-                  value: _selectedEggGroup,
+                  value: tempSelectedEggGroup,
                   decoration: InputDecoration(
                     hintText: 'Select egg group',
                     border: OutlineInputBorder(
@@ -675,28 +445,27 @@ void _applyOrdering() {
                   ],
                   onChanged: (value) {
                     setModalState(() {
-                      _selectedEggGroup = value;
+                      tempSelectedEggGroup = value;
                     });
                   },
                 ),
                 const SizedBox(height: 24),
-                
+
                 // Apply Button
                 SizedBox(
                   width: double.infinity,
                   child: ElevatedButton(
                     onPressed: () {
-                      setState(() {
-                        _selectedType = _selectedType;
-                        _selectedGeneration = _selectedGeneration;
-                        _isLegendary = _isLegendary;
-                        _isMythical = _isMythical;
-                        _selectedAbility = _selectedAbility;
-                        _selectedEggGroup = _selectedEggGroup;
-                        _updateActiveFiltersCount();
-                      });
+                      ref.read(pokemonListProvider.notifier).updateFilters(
+                            PokemonFilters(
+                              type: tempSelectedType,
+                              generation: tempSelectedGeneration,
+                              isLegendary: tempIsLegendary,
+                              isMythical: tempIsMythical,
+                              eggGroup: tempSelectedEggGroup,
+                            ),
+                          );
                       Navigator.pop(context);
-                      _performSearch();
                     },
                     style: ElevatedButton.styleFrom(
                       backgroundColor: Colors.red,
@@ -725,6 +494,8 @@ void _applyOrdering() {
   }
 
   Widget _buildDrawer(BuildContext context) {
+    final pokemonList = ref.read(pokemonListProvider).pokemonList;
+    
     return Drawer(
       child: Column(
         children: [
@@ -795,7 +566,7 @@ void _applyOrdering() {
                 context,
                 MaterialPageRoute(
                   builder: (context) => WhoIsThatPokemonScreen(
-                    pokedex: _pokemonList,
+                    pokedex: pokemonList,
                   ),
                 ),
               );
@@ -818,9 +589,22 @@ void _applyOrdering() {
     );
   }
 
-
   @override
   Widget build(BuildContext context) {
+    final state = ref.watch(pokemonListProvider);
+    final activeFiltersCount = ref.watch(activeFiltersCountProvider);
+    final isSearching = ref.watch(isLoadingProvider);
+    final error = ref.watch(errorProvider);
+
+    // Sync search controller with state if needed (for clear operations)
+    if (_searchController.text != state.searchTerm) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (mounted && _searchController.text != state.searchTerm) {
+          _searchController.text = state.searchTerm;
+        }
+      });
+    }
+
     return Scaffold(
       appBar: AppBar(
         title: const Text(
@@ -831,9 +615,9 @@ void _applyOrdering() {
         foregroundColor: Colors.white,
         elevation: 0,
         actions: [
-           IconButton(
+          IconButton(
             icon: const Icon(Icons.refresh),
-            onPressed: _loadPokemon,
+            onPressed: () => ref.read(pokemonListProvider.notifier).loadPokemon(),
           ),
         ],
       ),
@@ -867,7 +651,7 @@ void _applyOrdering() {
                               icon: const Icon(Icons.clear),
                               onPressed: () {
                                 _searchController.clear();
-                                _performSearch();
+                                ref.read(pokemonListProvider.notifier).clearSearch();
                               },
                             )
                           : null,
@@ -898,19 +682,19 @@ void _applyOrdering() {
                   children: [
                     Container(
                       decoration: BoxDecoration(
-                        color: _activeFiltersCount > 0 ? Colors.red : Colors.grey[200],
+                        color: activeFiltersCount > 0 ? Colors.red : Colors.grey[200],
                         borderRadius: BorderRadius.circular(12),
                       ),
                       child: IconButton(
                         icon: Icon(
                           Icons.filter_list,
-                          color: _activeFiltersCount > 0 ? Colors.white : Colors.grey[700],
+                          color: activeFiltersCount > 0 ? Colors.white : Colors.grey[700],
                         ),
                         onPressed: _showFilterDialog,
                         tooltip: 'Filters',
                       ),
                     ),
-                    if (_activeFiltersCount > 0)
+                    if (activeFiltersCount > 0)
                       Positioned(
                         right: 4,
                         top: 4,
@@ -925,7 +709,7 @@ void _applyOrdering() {
                             minHeight: 18,
                           ),
                           child: Text(
-                            '$_activeFiltersCount',
+                            '$activeFiltersCount',
                             style: const TextStyle(
                               color: Colors.black,
                               fontSize: 10,
@@ -937,7 +721,6 @@ void _applyOrdering() {
                       ),
                   ],
                 ),
-                // ****//
 
                 const SizedBox(width: 10),
                 Stack(
@@ -963,58 +746,42 @@ void _applyOrdering() {
           ),
 
           // Active Filters Chips
-          if (_activeFiltersCount > 0)
+          if (activeFiltersCount > 0)
             Container(
               padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
               child: Wrap(
                 spacing: 8,
                 runSpacing: 8,
                 children: [
-                  if (_selectedType != null)
+                  if (state.filters.type != null)
                     _buildFilterChip(
-                      label: _capitalize(_selectedType!),
+                      label: _capitalize(state.filters.type!),
                       onDeleted: () {
-                        setState(() {
-                          _selectedType = null;
-                          _updateActiveFiltersCount();
-                        });
-                        _performSearch();
+                        ref.read(pokemonListProvider.notifier).clearFilter('type');
                       },
-                      color: _getTypeColor(_capitalize(_selectedType!)),
+                      color: _getTypeColor(_capitalize(state.filters.type!)),
                     ),
-                  if (_selectedGeneration != null)
+                  if (state.filters.generation != null)
                     _buildFilterChip(
-                      label: 'Gen $_selectedGeneration',
+                      label: 'Gen ${state.filters.generation}',
                       onDeleted: () {
-                        setState(() {
-                          _selectedGeneration = null;
-                          _updateActiveFiltersCount();
-                        });
-                        _performSearch();
+                        ref.read(pokemonListProvider.notifier).clearFilter('generation');
                       },
                       color: Colors.blue,
                     ),
-                  if (_isLegendary)
+                  if (state.filters.isLegendary)
                     _buildFilterChip(
                       label: 'Legendary',
                       onDeleted: () {
-                        setState(() {
-                          _isLegendary = false;
-                          _updateActiveFiltersCount();
-                        });
-                        _performSearch();
+                        ref.read(pokemonListProvider.notifier).clearFilter('legendary');
                       },
                       color: Colors.amber,
                     ),
-                  if (_isMythical)
+                  if (state.filters.isMythical)
                     _buildFilterChip(
                       label: 'Mythical',
                       onDeleted: () {
-                        setState(() {
-                          _isMythical = false;
-                          _updateActiveFiltersCount();
-                        });
-                        _performSearch();
+                        ref.read(pokemonListProvider.notifier).clearFilter('mythical');
                       },
                       color: Colors.purple,
                     ),
@@ -1023,7 +790,7 @@ void _applyOrdering() {
             ),
 
           // Loading Indicator
-          if (_isLoading)
+          if (isSearching)
             Container(
               padding: const EdgeInsets.all(32.0),
               child: Column(
@@ -1044,7 +811,7 @@ void _applyOrdering() {
             ),
 
           // Error Message
-          if (_error?.isNotEmpty ?? false)
+          if (error?.isNotEmpty ?? false)
             Container(
               margin: const EdgeInsets.all(16.0),
               padding: const EdgeInsets.all(16.0),
@@ -1059,7 +826,7 @@ void _applyOrdering() {
                   const SizedBox(width: 12),
                   Expanded(
                     child: Text(
-                      _error ?? '',
+                      error ?? '',
                       style: const TextStyle(color: Colors.red),
                     ),
                   ),
@@ -1069,7 +836,7 @@ void _applyOrdering() {
 
           // Search Results
           Expanded(
-            child: _buildResultsContent(),
+            child: _buildResultsContent(state, isSearching),
           ),
         ],
       ),
@@ -1077,8 +844,13 @@ void _applyOrdering() {
   }
 
   // Where the actual visuals of the list screen are built
-  Widget _buildBody() {
-    if (_error != null && _pokemonList.isEmpty) {
+  Widget _buildBody(PokemonListState state) {
+    final error = state.error;
+    final pokemonList = state.pokemonList;
+    final isLoadingMore = state.isLoadingMore;
+    final hasMore = state.hasMore;
+
+    if (error != null && pokemonList.isEmpty) {
       return Center(
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
@@ -1091,13 +863,13 @@ void _applyOrdering() {
             ),
             const SizedBox(height: 8),
             Text(
-              _error!,
+              error,
               textAlign: TextAlign.center,
               style: TextStyle(fontSize: 16, color: Colors.grey[600]),
             ),
             const SizedBox(height: 16),
             ElevatedButton(
-              onPressed: _loadPokemon,
+              onPressed: () => ref.read(pokemonListProvider.notifier).loadPokemon(),
               child: const Text('Try Again'),
             ),
           ],
@@ -1105,7 +877,7 @@ void _applyOrdering() {
       );
     }
 
-    if (_pokemonList.isEmpty && _isLoadingS) {
+    if (pokemonList.isEmpty && isLoadingMore) {
       return const Center(
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
@@ -1119,12 +891,12 @@ void _applyOrdering() {
     }
 
     return RefreshIndicator(
-      onRefresh: _loadPokemon,
+      onRefresh: () => ref.read(pokemonListProvider.notifier).loadPokemon(),
       child: ListView.builder(
         controller: _scrollController,
-        itemCount: _pokemonList.length + (_hasMore ? 1 : 0),
+        itemCount: pokemonList.length + (hasMore ? 1 : 0),
         itemBuilder: (context, index) {
-          if (index == _pokemonList.length) {
+          if (index == pokemonList.length) {
             return const Padding(
               padding: EdgeInsets.all(16),
               child: Center(
@@ -1133,12 +905,11 @@ void _applyOrdering() {
             );
           }
 
-          return PokemonCard(pokemon: _pokemonList[index]);
+          return PokemonCard(pokemon: pokemonList[index]);
         },
       ),
     );
   }
-
 
   Widget _buildFilterChip({
     required String label,
@@ -1160,16 +931,16 @@ void _applyOrdering() {
     );
   }
 
-  Widget _buildResultsContent() {
-    if (_isLoading) {
+  Widget _buildResultsContent(PokemonListState state, bool isSearching) {
+    if (isSearching) {
       return const SizedBox.shrink();
     }
 
-    if (_searchController.text.isEmpty && _activeFiltersCount == 0) {
-      return _buildBody();
+    if (!state.isSearchOrFilterActive) {
+      return _buildBody(state);
     }
 
-    if (_searchResults.isEmpty) {
+    if (state.searchResults.isEmpty) {
       return _buildEmptyState(
         icon: Icons.sentiment_dissatisfied,
         title: 'No Pokémon found',
@@ -1178,10 +949,10 @@ void _applyOrdering() {
     }
 
     return ListView.builder(
-      itemCount: _searchResults.length,
+      itemCount: state.searchResults.length,
       padding: const EdgeInsets.only(top: 8),
       itemBuilder: (context, index) {
-        final pokemon = _searchResults[index];
+        final pokemon = state.searchResults[index];
         return PokemonCard(pokemon: pokemon);
       },
     );
@@ -1263,49 +1034,9 @@ void _applyOrdering() {
     'Rock', 'Ghost', 'Dragon', 'Dark', 'Steel', 'Fairy'
   ];
 
-  // daba warning de no usarse  (i did writed forgot about english)
-  // static const List<String> _pokemonAbilities = [
-  //   'Adaptability', 'Aftermath', 'Air Lock', 'Analytic', 'Anger Point',
-  //   'Anticipation', 'Arena Trap', 'Aroma Veil', 'Aura Break', 'Bad Dreams',
-  //   'Battle Armor', 'Battle Bond', 'Beast Boost', 'Berserk', 'Big Pecks',
-  //   'Blaze', 'Bleeds', 'Blind Eye', 'Bountiful Harvest', 'Brick Break',
-  //   'Bright Aura', 'Bulletproof', 'Burnt Out', 'Cacophony', 'Cakewalk',
-  //   'Calm Mind', 'Camaraderie', 'Camouflage', 'Cataclysm', 'Cell Battery',
-  //   'Cement Armor', 'Chain Reaction', 'Chainsmoker', 'Chameleon', 'Champ',
-  //   'Change', 'Chaos', 'Charge', 'Charmed', 'Charisma', 'Charm',
-  //   'Cheap Shot', 'Check Mate', 'Chlorophyll', 'Choice Band', 'Chomp',
-  //   'Chosen One', 'Circuit Trail', 'Cleanliness', 'Clear Body', 'Clear Smog',
-  //   'Clerical', 'Clever', 'Cloud Nine', 'Cloudy Day', 'Coating',
-  //   'Coast Guard', 'Coat Change', 'Cobweb', 'Cocoon', 'Code of Chivalry',
-  //   'Coercion', 'Cold Front', 'Color Change', 'Colorless', 'Combat Instinct',
-  //   'Comfort', 'Comfortable', 'Comforting Aura', 'Command Card', 'Commander',
-  //   'Commando', 'Commercial', 'Commitment', 'Committed', 'Common',
-  //   'Communion', 'Community', 'Como', 'Compact', 'Company',
-  //   'Companion', 'Comparator', 'Compare', 'Compassion', 'Compatible',
-  //   'Compete', 'Competence', 'Competent', 'Competing', 'Competitive',
-  //   'Competitor', 'Compilation', 'Compile', 'Compiler', 'Compiling',
-  //   'Complacence', 'Complacent', 'Complain', 'Complaining', 'Complaint',
-  //   'Complaisant', 'Complaisance', 'Complement', 'Complementary', 'Complete',
-  //   'Completed', 'Completely', 'Completeness', 'Completing', 'Completion',
-  //   'Complex', 'Complexion', 'Complexity', 'Compliance', 'Compliant',
-  //   'Complicate', 'Complicated', 'Complication', 'Complicity', 'Complied',
-  //   'Compliment', 'Complimentary', 'Compline', 'Comply', 'Complying',
-  //   'Compo', 'Component', 'Comport', 'Comportment', 'Compose',
-  //   'Composed', 'Composedly', 'Composedness', 'Composer', 'Composing',
-  //   'Composite', 'Composition', 'Compositor', 'Compost', 'Composure',
-  //   'Compote', 'Compound', 'Compounded', 'Compoundable', 'Compounding',
-  //   'Compounds', 'Comprador', 'Compradore', 'Comprecar', 'Compreco',
-  //   'Comprend', 'Comprehend', 'Comprehendable', 'Comprehended', 'Comprehending',
-  //   'Comprehensible', 'Comprehension', 'Comprehensive', 'Comprehensively', 'Comprehensiveness',
-  //   'Compresses', 'Compressibility', 'Compressible', 'Compressing', 'Compression',
-  //   'Compressive', 'Compressor', 'Comprise', 'Comprised', 'Comprising',
-  //   'Comprises', 'Compromise', 'COMPROMISED', 'COMPROMISING', 'COMPTROLLER'
-  // ];
-
   static const List<String> _pokemonEggGroups = [
     'Monster', 'Water 1', 'Bug', 'Flying', 'Field', 'Fairy',
     'Grass', 'Human-Like', 'Water 3', 'Mineral', 'Amorphous',
     'Water 2', 'Ditto', 'Undiscovered'
   ];
-
 }
